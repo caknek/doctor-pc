@@ -1,7 +1,9 @@
-Primera versión instalable de Doctor PC.
+Doctor PC 0.3: más herramientas y una cara nueva.
 
-- App de escritorio con botón para analizar, historial de informes y reparaciones guiadas.
-- Modo juego: mide mientras juegas para saber qué frena al juego.
-- Plan de mejora según tu país, presupuesto y si aceptas piezas usadas.
-- Para técnicos: abre el .json de un cliente y recalcula el plan con otro presupuesto.
-- Actualización desde la propia app (Acerca de > Buscar actualizaciones).
+- Monitor en vivo: CPU, RAM, gráfica, discos, red y temperatura en tiempo real, con historial de 60 segundos.
+- Limpieza segura: mide cuánto espacio puedes liberar y tú eliges qué borrar.
+- Velocidad del disco: prueba oficial de Windows que dice si tu disco hace lento al PC.
+- Comparar informes: antes y después de una reparación.
+- Ficha del técnico en los informes, exportar a PDF y enviar el resumen por WhatsApp.
+- Diseño nuevo con animaciones, tema claro/oscuro y 6 colores a elegir.
+- Avisos al terminar un análisis y progreso en la barra de tareas.

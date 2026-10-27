@@ -46,6 +46,7 @@ param(
     [switch]$NoAbrir,
     [switch]$SinJuegos,
     [switch]$ModoApp,
+    [string]$Tecnico = '',
     [string]$ArchivoProgreso = '',
     [string]$ArchivoCancelar = '',
     [ValidateSet('', 'dism_sfc', 'chkdsk', 'memoria', 'liberador', 'inicio', 'energia', 'graficos', 'actualizaciones')][string]$Accion = ''
@@ -53,7 +54,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
-$script:Version = '0.2.1'
+$script:Version = '0.3.0'
 $script:Raiz = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $script:DirDatos = Join-Path $script:Raiz 'datos'
 $script:EsWindows = ($env:OS -eq 'Windows_NT')
@@ -73,6 +74,13 @@ function Write-Alerta([string]$t) { Write-Host "    ! $t" -ForegroundColor Yello
 function Add-Aviso([string]$t)    { [void]$script:Avisos.Add($t) }
 
 # Comunicación con la app de escritorio: líneas "##TIPO|dato|dato" en un archivo (funciona también elevado)
+# Ficha del técnico: "Nombre|Contacto|Contacto2" (aparece en el informe y en el resumen)
+function Get-Tecnico {
+    $p = @("$Tecnico" -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if (-not $p.Count) { return $null }
+    [pscustomobject]@{ Nombre = $p[0]; Contactos = @($p | Select-Object -Skip 1) }
+}
+
 function Send-Evento([string]$Tipo, [object[]]$Partes = @()) {
     $linea = '##' + $Tipo + '|' + ((@($Partes) | ForEach-Object { "$_" -replace '[\r\n|]', ' ' }) -join '|')
     if ($ArchivoProgreso) { try { [System.IO.File]::AppendAllText($ArchivoProgreso, $linea + "`n", (New-Object System.Text.UTF8Encoding($false))) } catch { } }
@@ -1907,6 +1915,8 @@ function Get-TextoResumen($D, $Ctx, $Hallazgos, $Plan, $Salud) {
     $l = New-Object System.Collections.ArrayList
     [void]$l.Add("DOCTOR PC - $($D.Equipo) - $(Format-Fecha $D.Fecha -Hora)")
     [void]$l.Add("Salud: $($Salud.Puntos)/100 ($($Salud.Etiqueta))")
+    $tec = Get-Tecnico
+    if ($tec) { [void]$l.Add("Técnico: $($tec.Nombre)$(if ($tec.Contactos.Count) { ' - ' + ($tec.Contactos -join ' / ') })") }
     [void]$l.Add("Equipo: $($s.Fabricante) $($s.Modelo)$(if ($Ctx.EsPortatil) { ' (portátil)' })")
     [void]$l.Add("CPU: $($D.Cpu.Nombre) ($($D.Cpu.Nucleos)C/$($D.Cpu.Hilos)H)")
     [void]$l.Add("GPU: $(($Ctx.Gpus | ForEach-Object { "$($_.Nombre)$(if ($_.VramGB) { " $($_.VramGB) GB" })" }) -join ' + ')")
@@ -1970,13 +1980,17 @@ textarea{width:100%;min-height:220px;font:13px/1.45 Consolas,monospace;backgroun
 button{font:inherit;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
 .note{font-size:13px;color:var(--mut);margin-top:8px}
 footer{margin-top:40px;font-size:13px;color:var(--mut)}
+.tec{border:1px solid var(--bd);border-left:4px solid var(--acc);border-radius:10px;padding:8px 14px;background:var(--card);font-size:13px}.tec b{display:block;font-size:14px}
 @media print{nav,button,.noprint{display:none}.find{break-inside:avoid}details{display:block}details>*{display:block}body{background:#fff}}
 '@
 
     [void]$sb.Append("<!doctype html><html lang=`"es`"><head><meta charset=`"utf-8`"><meta name=`"viewport`" content=`"width=device-width,initial-scale=1`"><title>Doctor PC - $(& $Enc $D.Equipo)</title><style>$css</style></head><body><div class=`"wrap`">")
 
     # Cabecera
-    [void]$sb.Append("<header class=`"top`"><div><h1>Doctor <span>PC</span></h1><div class=`"mut small`">Informe de <b>$(& $Enc $D.Equipo)</b> · $(& $Enc (Format-Fecha $D.Fecha -Hora)) · v$(& $Enc $D.Version)$(if (-not $D.Admin) { ' · ejecutado sin permisos de administrador (algunos datos faltan)' })</div></div></header>")
+    $tecHtml = ''
+    $tec = Get-Tecnico
+    if ($tec) { $tecHtml = '<div class="tec"><span class="mut">Informe preparado por</span><b>' + (& $Enc $tec.Nombre) + '</b>' + (& $Enc ($tec.Contactos -join ' · ')) + '</div>' }
+    [void]$sb.Append("<header class=`"top`"><div><h1>Doctor <span>PC</span></h1><div class=`"mut small`">Informe de <b>$(& $Enc $D.Equipo)</b> · $(& $Enc (Format-Fecha $D.Fecha -Hora)) · v$(& $Enc $D.Version)$(if (-not $D.Admin) { ' · ejecutado sin permisos de administrador (algunos datos faltan)' })</div></div>$tecHtml</header>")
     [void]$sb.Append('<nav><a href="#resumen">Resumen</a><a href="#hallazgos">Diagnóstico</a><a href="#plan">Plan de mejora</a><a href="#juegos">Juegos</a><a href="#rendimiento">Rendimiento</a><a href="#equipo">Equipo</a><a href="#windows">Windows</a><a href="#compartir">Compartir</a></nav>')
 
     # Resumen
@@ -2400,7 +2414,7 @@ $rutaHtml = Join-Path $Salida "$base.html"
 $rutaJson = Join-Path $Salida "$base.json"
 $html = New-InformeHtml $D $Ctx $Hallazgos $Juegos $Plan $Salud $Resumen
 [System.IO.File]::WriteAllText($rutaHtml, $html, (New-Object System.Text.UTF8Encoding($false)))
-$export = [ordered]@{ DoctorPC = $script:Version; Datos = $D; Diagnostico = [ordered]@{ Salud = $Salud; Hallazgos = $Hallazgos; Juegos = $Juegos; Plan = $Plan; Pais = $script:PaisNombre } }
+$export = [ordered]@{ DoctorPC = $script:Version; Datos = $D; Diagnostico = [ordered]@{ Salud = $Salud; Hallazgos = $Hallazgos; Juegos = $Juegos; Plan = $Plan; Pais = $script:PaisNombre; Resumen = $Resumen; Tecnico = (Get-Tecnico) } }
 [System.IO.File]::WriteAllText($rutaJson, ($export | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding($false)))
 
 Send-Evento 'RESULTADO' @($rutaHtml, $rutaJson, $Salud.Puntos, $Salud.Etiqueta)

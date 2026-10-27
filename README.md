@@ -20,6 +20,12 @@ Ve a **[Releases](https://github.com/caknek/doctor-pc/releases/latest)** y desca
 - **Modo juego:** mide mientras juegas y distingue si el límite es la GPU, la CPU, el disco, la RAM o el calor.
 - **Windows:** pantallazos azules (con su significado), apagados inesperados, errores de hardware, drivers con fallos, programas de inicio.
 - **Plan de mejora:** primero lo gratis, después las compras que más rinden por dólar. Antes de sugerir una pieza revisa la compatibilidad: socket, tipo de RAM, portátil, fuente.
+- **Monitor en vivo:** CPU, RAM, GPU, discos, red, temperatura y los procesos que más consumen, cada segundo.
+- **Limpieza segura:** mide primero cuánto puedes liberar (temporales, caché de navegadores, informes de error, miniaturas, papelera) y tú eliges qué borrar.
+- **Velocidad del disco:** prueba oficial de Windows (WinSAT) con un veredicto claro: HDD, SSD SATA o NVMe.
+- **Comparar informes:** antes y después de una reparación, con lo resuelto, lo nuevo y lo que sigue igual.
+- **Para técnicos:** tu ficha en los informes, exportación a PDF y envío del resumen por WhatsApp.
+- **Personalizable:** tema claro u oscuro, 6 colores de acento y animaciones.
 - **Reparaciones guiadas:** herramientas oficiales de Windows (DISM + SFC, chkdsk, diagnóstico de memoria…), una por una y con confirmación.
 - **Para técnicos:** abre el `.json` de un cliente y recalcula el plan con otro país o presupuesto.
 

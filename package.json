@@ -1,7 +1,7 @@
 {
   "name": "doctor-pc",
   "productName": "Doctor PC",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Doctor PC: diagnóstico explicable y gratuito para Windows",
   "main": "main.js",
   "author": "Miguel Romero (caknek)",

@@ -8,50 +8,111 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
+  <!-- Iconos (trazos al estilo Lucide) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-pulso" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+      <symbol id="i-monitor" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+      <symbol id="i-informe" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 13h6"/><path d="M9 17h6"/></symbol>
+      <symbol id="i-comparar" viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></symbol>
+      <symbol id="i-limpiar" viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 10.7l-6.1 1.9L12 18.5l-1.9-5.9L4 10.7l6.1-1.9z"/><path d="M19 17v4"/><path d="M17 19h4"/><path d="M5 3v3"/><path d="M3.5 4.5h3"/></symbol>
+      <symbol id="i-disco" viewBox="0 0 24 24"><path d="M22 12H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></symbol>
+      <symbol id="i-llave" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+      <symbol id="i-ajustes" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+      <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></symbol>
+      <symbol id="i-gpu" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="8" cy="12" r="2.5"/><circle cx="16" cy="12" r="2.5"/><path d="M6 18v3M18 18v3"/></symbol>
+      <symbol id="i-ram" viewBox="0 0 24 24"><path d="M6 19v-3M10 19v-3M14 19v-3M18 19v-3"/><path d="M8 11V9M16 11V9M12 11V9"/><path d="M22 15V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1z"/></symbol>
+      <symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z"/></symbol>
+      <symbol id="i-red" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><path d="M12 20h.01"/></symbol>
+      <symbol id="i-juego" viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><path d="M15 13h.01M18 11h.01"/><rect x="2" y="6" width="20" height="12" rx="6"/></symbol>
+      <symbol id="i-windows" viewBox="0 0 24 24"><path d="M3 5.5l7-1v7H3zM12 4.2l9-1.2v8.5h-9zM3 13h7v7l-7-1zM12 13h9v8.5l-9-1.2z"/></symbol>
+      <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M12 11v6"/><path d="M9 14l3 3 3-3"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></symbol>
+      <symbol id="i-copiar" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="i-externo" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></symbol>
+      <symbol id="i-carpeta" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+      <symbol id="i-papelera" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+      <symbol id="i-flecha" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></symbol>
+      <symbol id="i-atras" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></symbol>
+      <symbol id="i-descarga" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol>
+      <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+      <symbol id="i-rayo" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+      <symbol id="i-usuario" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+      <symbol id="i-paleta" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></symbol>
+      <symbol id="i-campana" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></symbol>
+    </defs>
+  </svg>
+
   <aside class="lateral">
     <div class="marca"><img src="icon.png" alt=""><div><b>Doctor PC</b><small id="version">v—</small></div></div>
+    <div class="grupo">Diagnóstico</div>
     <nav>
-      <button class="nav activo" data-vista="analizar"><span class="ico">◎</span>Analizar</button>
-      <button class="nav" data-vista="informes"><span class="ico">▤</span>Informes</button>
-      <button class="nav" data-vista="reparaciones"><span class="ico">✚</span>Reparaciones</button>
-      <button class="nav" data-vista="ajustes"><span class="ico">⚙</span>Ajustes</button>
-      <button class="nav" data-vista="acerca"><span class="ico">ⓘ</span>Acerca de</button>
+      <button class="nav activo" data-vista="inicio"><svg class="i"><use href="#i-pulso"/></svg>Inicio</button>
+      <button class="nav" data-vista="monitor"><svg class="i"><use href="#i-monitor"/></svg>Monitor en vivo<span class="punto-vivo oculto" id="nav-vivo"></span></button>
+      <button class="nav" data-vista="informes"><svg class="i"><use href="#i-informe"/></svg>Informes<span class="contador oculto" id="nav-n-informes"></span></button>
+      <button class="nav" data-vista="comparar"><svg class="i"><use href="#i-comparar"/></svg>Comparar</button>
     </nav>
-    <button id="pildora-update" class="pildora oculto" data-vista="acerca"></button>
-    <div class="pie-lateral">Todo se analiza en tu PC.<br>Nada sale de tu equipo.</div>
+    <div class="grupo">Herramientas</div>
+    <nav>
+      <button class="nav" data-vista="limpieza"><svg class="i"><use href="#i-limpiar"/></svg>Limpieza</button>
+      <button class="nav" data-vista="disco"><svg class="i"><use href="#i-disco"/></svg>Velocidad del disco</button>
+      <button class="nav" data-vista="reparaciones"><svg class="i"><use href="#i-llave"/></svg>Reparaciones</button>
+    </nav>
+    <nav class="abajo">
+      <button id="pildora-update" class="pildora oculto" data-vista="acerca"><svg class="i"><use href="#i-descarga"/></svg><span></span></button>
+      <button class="nav" data-vista="ajustes"><svg class="i"><use href="#i-ajustes"/></svg>Ajustes</button>
+      <button class="nav" data-vista="acerca"><svg class="i"><use href="#i-info"/></svg>Acerca de</button>
+    </nav>
   </aside>
 
   <main>
-    <!-- ANALIZAR -->
-    <section id="v-analizar" class="vista activa">
+    <!-- ============ INICIO ============ -->
+    <section id="v-inicio" class="vista activa">
       <div id="panel-inicio">
         <div class="hero">
-          <div>
+          <div class="burbuja b1"></div><div class="burbuja b2"></div><div class="burbuja b3"></div>
+          <div class="hero-texto">
+            <div class="etiqueta-hero"><svg class="i"><use href="#i-escudo"/></svg>Gratis · Sin internet · No modifica nada</div>
             <h1>Descubre qué le pasa a tu PC</h1>
-            <p>Doctor PC revisa el hardware, los discos, tus juegos y los errores de Windows. Después te explica qué falla y te propone la solución más barata primero.</p>
-            <button id="btn-analizar" class="btn grande">Analizar mi PC</button>
-            <div class="nota" id="nota-duracion">Tarda entre 1 y 2 minutos. No modifica nada.</div>
+            <p>Revisa el hardware, los discos, tus juegos y los errores de Windows. Te explica qué falla y te propone la solución más barata primero.</p>
+            <button id="btn-analizar" class="btn grande brillo"><svg class="i"><use href="#i-pulso"/></svg>Analizar mi PC</button>
+            <div class="nota-hero" id="nota-duracion">Tarda entre 1 y 2 minutos.</div>
           </div>
           <div class="hero-ilustracion" aria-hidden="true">
-            <svg viewBox="0 0 200 150"><rect x="20" y="15" width="160" height="100" rx="10" class="m"/><rect x="32" y="27" width="136" height="76" rx="4" class="p"/><polyline points="40,70 70,70 80,48 92,92 104,58 114,70 160,70" class="l"/><rect x="80" y="118" width="40" height="8" rx="3" class="m"/><rect x="60" y="128" width="80" height="6" rx="3" class="m"/></svg>
+            <svg viewBox="0 0 220 170">
+              <circle cx="110" cy="80" r="70" class="halo"/>
+              <rect x="30" y="20" width="160" height="104" rx="12" class="m"/>
+              <rect x="42" y="32" width="136" height="80" rx="5" class="p"/>
+              <polyline points="50,74 78,74 88,52 100,98 112,60 122,74 170,74" class="l"/>
+              <rect x="92" y="126" width="36" height="12" rx="3" class="m"/>
+              <rect x="70" y="140" width="80" height="7" rx="3.5" class="m"/>
+              <circle r="5" class="orb"><animateMotion dur="6s" repeatCount="indefinite" path="M110,10 a70,70 0 1,1 -0.1,0"/></circle>
+            </svg>
           </div>
         </div>
 
+        <div id="mi-equipo" class="mi-equipo oculto"></div>
+
+        <h2 class="titulo-seccion">Opciones del análisis</h2>
         <div class="tarjetas-opciones">
-          <label class="opcion"><span>País donde comprarías piezas</span><select id="o-pais"></select></label>
-          <div class="opcion"><span>Presupuesto para mejoras (USD)</span>
+          <label class="opcion"><span class="op-tit">País donde comprarías piezas</span><select id="o-pais"></select></label>
+          <div class="opcion"><span class="op-tit">Presupuesto para mejoras (USD)</span>
             <div class="fila"><input id="o-presupuesto" type="number" min="0" step="5"><label class="chk"><input id="o-sinlimite" type="checkbox"> Sin límite</label></div>
             <small>0 = solo soluciones gratis</small></div>
           <label class="opcion interruptor"><input id="o-usados" type="checkbox"><span><b>Aceptar piezas usadas</b><small>Suelen costar la mitad</small></span></label>
           <label class="opcion interruptor"><input id="o-admin" type="checkbox"><span><b>Permisos de administrador</b><small>Recomendado: lee la salud de los discos y más registros</small></span></label>
           <label class="opcion interruptor"><input id="o-juego" type="checkbox"><span><b>Modo juego</b><small>Mide mientras juegas para saber qué frena al juego</small></span></label>
-          <label class="opcion" id="caja-segundos"><span>Duración del modo juego</span>
+          <label class="opcion oculto" id="caja-segundos"><span class="op-tit">Duración del modo juego</span>
             <select id="o-segundos"><option value="60">1 minuto</option><option value="120">2 minutos</option><option value="180">3 minutos</option><option value="300">5 minutos</option></select></label>
         </div>
 
         <div id="ultimo" class="tarjeta oculto"></div>
 
         <div class="tecnicos">
+          <svg class="i"><use href="#i-usuario"/></svg>
           <span><b>¿Eres técnico?</b> Pide al cliente el archivo <code>.json</code> de su análisis y genera aquí el informe con tu país y presupuesto.</span>
           <button id="btn-json" class="btn secundario">Abrir datos de un cliente…</button>
         </div>
@@ -59,97 +120,192 @@
 
       <div id="panel-progreso" class="oculto">
         <div class="progreso-caja">
-          <h2 id="p-titulo">Analizando tu PC…</h2>
-          <div id="p-aviso" class="aviso oculto"></div>
-          <div class="barra"><i id="p-barra"></i></div>
-          <div class="p-fila"><span id="p-texto">Preparando…</span><b id="p-pct">0 %</b></div>
-          <div class="p-botones">
-            <button id="btn-empezar" class="btn oculto">Ya estoy jugando: empezar a medir</button>
-            <button id="btn-cancelar" class="btn secundario">Cancelar</button>
+          <div class="escaner">
+            <div class="onda"></div><div class="onda o2"></div><div class="onda o3"></div>
+            <div class="barrido"></div>
+            <div class="nucleo"><b id="p-pct">0</b><small>%</small></div>
           </div>
-          <p class="nota" id="p-nota">Puedes seguir usando el PC con normalidad, pero evita tareas pesadas para que la medición sea fiable.</p>
+          <div class="progreso-info">
+            <h2 id="p-titulo">Analizando tu PC…</h2>
+            <p class="sub" id="p-texto">Preparando…</p>
+            <div id="p-aviso" class="aviso oculto"></div>
+            <div class="barra brillante"><i id="p-barra"></i></div>
+            <ol class="pasos" id="p-pasos"></ol>
+            <div class="p-botones">
+              <button id="btn-empezar" class="btn oculto"><svg class="i"><use href="#i-juego"/></svg>Ya estoy jugando: empezar a medir</button>
+              <button id="btn-cancelar" class="btn secundario">Cancelar</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- INFORME -->
+    <!-- ============ INFORME ============ -->
     <section id="v-informe" class="vista">
       <div class="barra-informe">
-        <button class="btn secundario" id="btn-volver">← Informes</button>
-        <div class="titulo-informe" id="i-titulo"></div>
-        <div class="recalc">
-          <select id="r-pais" title="País"></select>
-          <input id="r-presupuesto" type="number" min="0" step="5" title="Presupuesto en USD">
-          <button class="btn secundario" id="btn-recalcular" title="Rehace el plan de mejora con otro país o presupuesto">Recalcular plan</button>
+        <button class="btn icono secundario" id="btn-volver" title="Volver a informes"><svg class="i"><use href="#i-atras"/></svg></button>
+        <div class="titulo-informe"><b id="i-titulo"></b><small id="i-sub"></small></div>
+        <div class="recalc" title="Rehace el plan de mejora con otro país o presupuesto">
+          <select id="r-pais"></select>
+          <input id="r-presupuesto" type="number" min="0" step="5">
+          <button class="btn secundario" id="btn-recalcular">Recalcular</button>
         </div>
-        <button class="btn secundario" id="btn-navegador">Abrir en el navegador</button>
-        <button class="btn secundario" id="btn-archivo">Mostrar archivo</button>
+        <div class="acciones-informe">
+          <button class="btn icono secundario" id="btn-pdf" title="Guardar en PDF"><svg class="i"><use href="#i-pdf"/></svg></button>
+          <button class="btn icono secundario verde" id="btn-whatsapp" title="Enviar resumen por WhatsApp"><svg class="i"><use href="#i-chat"/></svg></button>
+          <button class="btn icono secundario" id="btn-copiar" title="Copiar resumen"><svg class="i"><use href="#i-copiar"/></svg></button>
+          <button class="btn icono secundario" id="btn-navegador" title="Abrir en el navegador"><svg class="i"><use href="#i-externo"/></svg></button>
+          <button class="btn icono secundario" id="btn-archivo" title="Mostrar archivo"><svg class="i"><use href="#i-carpeta"/></svg></button>
+        </div>
       </div>
       <iframe id="marco" title="Informe de Doctor PC"></iframe>
     </section>
 
-    <!-- INFORMES -->
+    <!-- ============ MONITOR ============ -->
+    <section id="v-monitor" class="vista">
+      <div class="cabecera"><div><h1>Monitor en vivo</h1><p class="sub">Así trabaja tu PC ahora mismo. Se actualiza cada segundo.</p></div><span class="en-vivo" id="m-estado"><i></i>Conectando…</span></div>
+      <div class="medidores">
+        <div class="medidor" data-m="cpu"><svg viewBox="0 0 120 120"><circle class="fondo" cx="60" cy="60" r="50"/><circle class="valor" cx="60" cy="60" r="50"/></svg><div class="m-centro"><b>–</b><small>%</small></div><div class="m-pie"><svg class="i"><use href="#i-cpu"/></svg>Procesador</div><div class="m-det" id="m-cpu-det"></div></div>
+        <div class="medidor" data-m="ram"><svg viewBox="0 0 120 120"><circle class="fondo" cx="60" cy="60" r="50"/><circle class="valor" cx="60" cy="60" r="50"/></svg><div class="m-centro"><b>–</b><small>%</small></div><div class="m-pie"><svg class="i"><use href="#i-ram"/></svg>Memoria RAM</div><div class="m-det" id="m-ram-det"></div></div>
+        <div class="medidor" data-m="gpu"><svg viewBox="0 0 120 120"><circle class="fondo" cx="60" cy="60" r="50"/><circle class="valor" cx="60" cy="60" r="50"/></svg><div class="m-centro"><b>–</b><small>%</small></div><div class="m-pie"><svg class="i"><use href="#i-gpu"/></svg>Gráfica (3D)</div><div class="m-det" id="m-gpu-det"></div></div>
+        <div class="medidor" data-m="temp"><svg viewBox="0 0 120 120"><circle class="fondo" cx="60" cy="60" r="50"/><circle class="valor" cx="60" cy="60" r="50"/></svg><div class="m-centro"><b>–</b><small>°C</small></div><div class="m-pie"><svg class="i"><use href="#i-temp"/></svg>Temperatura CPU</div><div class="m-det" id="m-temp-det"></div></div>
+      </div>
+      <div class="grid-2">
+        <div class="tarjeta"><div class="t-cab"><h3>Historial (60 s)</h3><div class="leyenda"><span class="c1">CPU</span><span class="c2">RAM</span><span class="c3">GPU</span></div></div><svg class="grafica" id="m-grafica" viewBox="0 0 600 160" preserveAspectRatio="none"></svg></div>
+        <div class="tarjeta"><div class="t-cab"><h3>Red</h3><svg class="i tenue"><use href="#i-red"/></svg></div>
+          <div class="red-num"><div><small>Bajada</small><b id="m-bajada">–</b></div><div><small>Subida</small><b id="m-subida">–</b></div></div>
+          <svg class="grafica corta" id="m-grafica-red" viewBox="0 0 600 90" preserveAspectRatio="none"></svg></div>
+      </div>
+      <div class="grid-2">
+        <div class="tarjeta"><div class="t-cab"><h3>Discos</h3><svg class="i tenue"><use href="#i-disco"/></svg></div><div id="m-discos" class="lista-barras"></div></div>
+        <div class="tarjeta"><div class="t-cab"><h3>Lo que más consume ahora</h3><svg class="i tenue"><use href="#i-rayo"/></svg></div><div id="m-procs" class="lista-barras"></div></div>
+      </div>
+      <p class="nota">Para ver la temperatura del procesador, abre LibreHardwareMonitor (gratuito) como administrador; Doctor PC lee sus sensores solo.</p>
+    </section>
+
+    <!-- ============ INFORMES ============ -->
     <section id="v-informes" class="vista">
-      <div class="cabecera"><h1>Informes</h1><button class="btn secundario" id="btn-carpeta">Abrir carpeta</button></div>
-      <p class="sub">Cada análisis guarda un informe HTML y un archivo <code>.json</code> con los datos. El .json sirve para enviarlo a un técnico.</p>
+      <div class="cabecera"><div><h1>Informes</h1><p class="sub">Cada análisis guarda un informe y un archivo <code>.json</code> con los datos, que puedes enviar a un técnico.</p></div><button class="btn secundario" id="btn-carpeta"><svg class="i"><use href="#i-carpeta"/></svg>Abrir carpeta</button></div>
       <div id="lista-informes" class="lista"></div>
     </section>
 
-    <!-- REPARACIONES -->
+    <!-- ============ COMPARAR ============ -->
+    <section id="v-comparar" class="vista">
+      <div class="cabecera"><div><h1>Comparar informes</h1><p class="sub">Compara dos análisis (por ejemplo, antes y después de una reparación) para ver qué se solucionó.</p></div></div>
+      <div class="tarjeta selector-comparar">
+        <label><small>Antes</small><select id="c-a"></select></label>
+        <svg class="i flecha-c"><use href="#i-flecha"/></svg>
+        <label><small>Después</small><select id="c-b"></select></label>
+      </div>
+      <div id="c-resultado"></div>
+    </section>
+
+    <!-- ============ LIMPIEZA ============ -->
+    <section id="v-limpieza" class="vista">
+      <div class="cabecera"><div><h1>Limpieza segura</h1><p class="sub">Primero mide cuánto espacio puedes recuperar. Tú eliges qué borrar. Nunca toca documentos, programas, contraseñas ni historial.</p></div><button class="btn secundario" id="btn-l-medir">Volver a medir</button></div>
+      <div class="limpieza-cab tarjeta">
+        <div><small>Seleccionado para liberar</small><b id="l-total">–</b></div>
+        <button class="btn grande" id="btn-l-limpiar" disabled><svg class="i"><use href="#i-limpiar"/></svg>Limpiar seleccionados</button>
+      </div>
+      <div id="l-lista" class="lista"></div>
+      <div id="l-resultado"></div>
+    </section>
+
+    <!-- ============ DISCO ============ -->
+    <section id="v-disco" class="vista">
+      <div class="cabecera"><div><h1>Velocidad del disco</h1><p class="sub">Prueba oficial de Windows (WinSAT). Dice con números si tu disco es el que hace lento al PC. Tarda 1-2 minutos y pide permiso de administrador.</p></div></div>
+      <div class="tarjeta fila-disco">
+        <label><small>Unidad</small><select id="d-unidad"></select></label>
+        <button class="btn grande" id="btn-d-probar"><svg class="i"><use href="#i-rayo"/></svg>Iniciar prueba</button>
+      </div>
+      <div id="d-progreso" class="tarjeta oculto"><div class="disco-anim"><svg class="i"><use href="#i-disco"/></svg></div><div style="flex:1"><b id="d-texto">Preparando…</b><div class="barra brillante"><i id="d-barra"></i></div></div></div>
+      <div id="d-resultado"></div>
+    </section>
+
+    <!-- ============ REPARACIONES ============ -->
     <section id="v-reparaciones" class="vista">
-      <div class="cabecera"><h1>Reparaciones guiadas</h1></div>
-      <p class="sub">Herramientas oficiales de Windows, una por una. Cada una explica qué hace y pide confirmación. Los cambios quedan anotados en <code>registro_cambios.log</code>. No existe un botón "Reparar todo".</p>
+      <div class="cabecera"><div><h1>Reparaciones guiadas</h1><p class="sub">Herramientas oficiales de Windows, una por una. Cada una explica qué hace y pide confirmación. Los cambios quedan anotados en <code>registro_cambios.log</code>. No existe un botón "Reparar todo".</p></div></div>
       <div id="lista-reparaciones" class="lista"></div>
     </section>
 
-    <!-- AJUSTES -->
+    <!-- ============ AJUSTES ============ -->
     <section id="v-ajustes" class="vista">
-      <div class="cabecera"><h1>Ajustes</h1></div>
-      <div class="tarjeta">
-        <h3>Carpetas de juegos</h3>
-        <p class="sub">Doctor PC encuentra solo los juegos de Steam, Epic, GOG, Ubisoft, EA, Riot, Xbox, Minecraft y Roblox, y revisa las carpetas <code>X:\Games</code> y <code>X:\Juegos</code>. Si tienes juegos en otra carpeta, añádela aquí.</p>
-        <div id="lista-carpetas"></div>
-        <button class="btn secundario" id="btn-add-carpeta">Añadir carpeta…</button>
-      </div>
-      <div class="tarjeta">
-        <h3>Fuente de alimentación</h3>
-        <p class="sub">Windows no puede leer la potencia de la fuente. Si la conoces (está en su etiqueta), Doctor PC solo recomendará tarjetas gráficas que pueda alimentar.</p>
-        <div class="fila"><input id="a-fuente" type="number" min="0" step="50" placeholder="Ej.: 450"><span>W (0 = no la conozco)</span></div>
-      </div>
-      <div class="tarjeta">
-        <h3>Privacidad</h3>
-        <label class="chk"><input id="a-anonimo" type="checkbox"> Ocultar el nombre del equipo en los informes</label>
-        <p class="sub">Los informes nunca incluyen tu nombre de usuario ni el contenido de tus archivos.</p>
-      </div>
-      <div class="tarjeta">
-        <h3>Informes</h3>
-        <p class="sub" id="a-carpeta"></p>
-        <button class="btn secundario" id="btn-carpeta2">Abrir carpeta de informes</button>
+      <div class="cabecera"><div><h1>Ajustes</h1></div></div>
+      <div class="grid-2">
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Apariencia</h3><svg class="i tenue"><use href="#i-paleta"/></svg></div>
+          <small class="etq-campo">Tema</small>
+          <div class="segmentado" id="a-tema"><button data-v="sistema">Sistema</button><button data-v="claro">Claro</button><button data-v="oscuro">Oscuro</button></div>
+          <small class="etq-campo">Color</small>
+          <div class="muestras" id="a-acento"></div>
+          <label class="chk espacio"><input id="a-animaciones" type="checkbox"> Animaciones</label>
+        </div>
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Ficha del técnico</h3><svg class="i tenue"><use href="#i-usuario"/></svg></div>
+          <p class="sub">Tus datos aparecen en los informes, en el PDF y en el resumen de WhatsApp. Ideal si ofreces soporte técnico.</p>
+          <label class="chk"><input id="t-activo" type="checkbox"> Mostrar mis datos en los informes</label>
+          <div class="campos" id="t-campos">
+            <input id="t-nombre" type="text" placeholder="Nombre o negocio" maxlength="60">
+            <input id="t-whatsapp" type="text" placeholder="WhatsApp" maxlength="30">
+            <input id="t-correo" type="text" placeholder="Correo" maxlength="60">
+          </div>
+          <div class="tec-vista" id="t-vista"></div>
+        </div>
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Carpetas de juegos</h3><svg class="i tenue"><use href="#i-juego"/></svg></div>
+          <p class="sub">Steam, Epic, GOG, Ubisoft, EA, Riot, Xbox, Minecraft y Roblox se detectan solos, igual que <code>X:\Games</code> y <code>X:\Juegos</code>. Añade aquí otras carpetas.</p>
+          <div id="lista-carpetas"></div>
+          <button class="btn secundario" id="btn-add-carpeta">Añadir carpeta…</button>
+        </div>
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Más opciones</h3><svg class="i tenue"><use href="#i-campana"/></svg></div>
+          <label class="chk espacio"><input id="a-notificaciones" type="checkbox"> Avisarme cuando termine un análisis o haya una actualización</label>
+          <label class="chk espacio"><input id="a-anonimo" type="checkbox"> Ocultar el nombre del equipo en los informes</label>
+          <small class="etq-campo">Potencia de la fuente de alimentación</small>
+          <div class="fila"><input id="a-fuente" type="number" min="0" step="50" placeholder="Ej.: 450"><span class="sub">W (0 = no la conozco)</span></div>
+          <p class="sub" id="a-carpeta"></p>
+          <button class="btn secundario" id="btn-carpeta2"><svg class="i"><use href="#i-carpeta"/></svg>Abrir carpeta de informes</button>
+        </div>
       </div>
     </section>
 
-    <!-- ACERCA -->
+    <!-- ============ ACERCA ============ -->
     <section id="v-acerca" class="vista">
-      <div class="cabecera"><h1>Acerca de Doctor PC</h1></div>
-      <div class="tarjeta update-tarjeta">
-        <div>
+      <div class="cabecera"><div><h1>Acerca de Doctor PC</h1></div></div>
+      <div class="tarjeta update-tarjeta" id="u-tarjeta">
+        <div class="u-icono"><svg class="i"><use href="#i-descarga"/></svg></div>
+        <div class="u-cuerpo">
           <h3>Actualizaciones</h3>
           <p id="u-texto" class="sub">Versión instalada: —</p>
           <div id="u-notas" class="notas oculto"></div>
-          <div class="barra oculto" id="u-barra-caja"><i id="u-barra"></i></div>
+          <div class="barra brillante oculto" id="u-barra-caja"><i id="u-barra"></i></div>
         </div>
-        <div class="u-botones">
-          <button class="btn" id="btn-update">Buscar actualizaciones</button>
-        </div>
+        <button class="btn" id="btn-update">Buscar actualizaciones</button>
       </div>
       <div class="tarjeta">
         <h3>Cómo funciona</h3>
-        <p>Doctor PC actúa como un técnico: observa el equipo, plantea hipótesis, te dice cómo confirmarlas y propone soluciones ordenadas por coste. Funciona sin internet, salvo para buscar actualizaciones.</p>
+        <p>Doctor PC actúa como un técnico: observa el equipo, plantea hipótesis, te dice cómo confirmarlas y propone soluciones ordenadas por coste. Todo se analiza en tu PC; solo se conecta a internet para buscar actualizaciones.</p>
         <p class="sub">Los índices de rendimiento y los precios son aproximados y orientativos. Las hipótesis indican causas probables, no certezas.</p>
-        <button class="btn secundario" id="btn-github">Ver el proyecto en GitHub</button>
+        <button class="btn secundario" id="btn-github"><svg class="i"><use href="#i-github"/></svg>Ver el proyecto en GitHub</button>
       </div>
     </section>
   </main>
+
+  <!-- Bienvenida -->
+  <div id="bienvenida" class="bienvenida oculto">
+    <div class="bv-caja">
+      <img src="icon.png" alt="" class="bv-logo">
+      <h1>Bienvenido a Doctor PC</h1>
+      <p class="sub">Tu técnico informático, dentro de tu PC.</p>
+      <ul class="bv-lista">
+        <li><svg class="i"><use href="#i-pulso"/></svg><span><b>Diagnóstico explicado</b> Qué falla, por qué y cómo comprobarlo.</span></li>
+        <li><svg class="i"><use href="#i-juego"/></svg><span><b>Pensado para juegos</b> Descubre qué frena a cada juego.</span></li>
+        <li><svg class="i"><use href="#i-rayo"/></svg><span><b>Mejoras a tu medida</b> Primero lo gratis; después lo que más rinde por tu dinero.</span></li>
+        <li><svg class="i"><use href="#i-escudo"/></svg><span><b>Seguro</b> No cambia nada sin tu permiso y no envía tus datos.</span></li>
+      </ul>
+      <button class="btn grande" id="btn-bv">Empezar</button>
+    </div>
+  </div>
 
   <div id="modal" class="modal oculto" role="dialog" aria-modal="true">
     <div class="modal-caja">
@@ -159,6 +315,7 @@
     </div>
   </div>
   <div id="toast" class="toast oculto"></div>
+  <canvas id="confeti" aria-hidden="true"></canvas>
 
   <script src="app.js"></script>
 </body>
