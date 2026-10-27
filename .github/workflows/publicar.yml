@@ -27,8 +27,9 @@ jobs:
         shell: pwsh
         run: |
           $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          gh release view "v$v" --repo '${{ github.repository }}' *> $null
-          $existe = ($LASTEXITCODE -eq 0)
+          # Solo cuenta como publicada si existe y no es borrador (un borrador se reutiliza)
+          $borrador = gh release view "v$v" --repo '${{ github.repository }}' --json isDraft -q .isDraft 2>$null
+          $existe = ($LASTEXITCODE -eq 0 -and "$borrador".Trim() -eq 'false')
           "version=$v" >> $env:GITHUB_OUTPUT
           "existe=$($existe.ToString().ToLower())" >> $env:GITHUB_OUTPUT
           if ($existe) { Write-Host "v$v ya está publicada: no hay nada que hacer." } else { Write-Host "Se publicará v$v" }
@@ -72,14 +73,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Añadir la versión de consola (sin instalación, también para Windows de 32 bits)
+      - name: Añadir la versión de consola y hacer pública la versión
         if: steps.version.outputs.existe == 'false'
         shell: pwsh
         run: |
+          $t = 'v${{ steps.version.outputs.version }}'
           $dir = 'dist/DoctorPC-Consola'
           New-Item -ItemType Directory -Path $dir -Force | Out-Null
           Copy-Item engine/* $dir -Recurse
           Compress-Archive -Path "$dir/*" -DestinationPath dist/DoctorPC-Consola.zip -Force
-          gh release upload 'v${{ steps.version.outputs.version }}' dist/DoctorPC-Consola.zip --clobber --repo '${{ github.repository }}'
+          gh release upload $t dist/DoctorPC-Consola.zip --clobber --repo '${{ github.repository }}'
+          # Comprobar que están los archivos que necesita el actualizador antes de publicar
+          $assets = gh release view $t --repo '${{ github.repository }}' --json assets -q '.assets[].name'
+          foreach ($a in 'DoctorPC-Instalador.exe', 'latest.yml') { if ($assets -notcontains $a) { throw "Falta $a en el release" } }
+          gh release edit $t --repo '${{ github.repository }}' --draft=false --latest --title "Doctor PC ${{ steps.version.outputs.version }}" --notes-file build/release-notes.md
+          Write-Host "Publicada $t"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

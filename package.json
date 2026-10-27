@@ -1,7 +1,7 @@
 {
   "name": "doctor-pc",
   "productName": "Doctor PC",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Doctor PC: diagnóstico explicable y gratuito para Windows",
   "main": "main.js",
   "author": "Miguel Romero (caknek)",
@@ -78,7 +78,7 @@
         "provider": "github",
         "owner": "caknek",
         "repo": "doctor-pc",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
     ]
   }

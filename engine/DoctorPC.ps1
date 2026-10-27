@@ -53,7 +53,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
-$script:Version = '0.2.0'
+$script:Version = '0.2.1'
 $script:Raiz = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $script:DirDatos = Join-Path $script:Raiz 'datos'
 $script:EsWindows = ($env:OS -eq 'Windows_NT')
