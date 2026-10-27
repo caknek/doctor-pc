@@ -1,0 +1,58 @@
+name: Publicar versión
+
+# Al subir una etiqueta vX.Y.Z se compila el instalador y se publica en Releases.
+# La app instalada lo detecta y ofrece actualizar con su botón.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Poner la versión de la etiqueta en la app y en el motor
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}'.TrimStart('v')
+          npm version $v --no-git-tag-version --allow-same-version
+          $motor = 'engine/DoctorPC.ps1'
+          $t = Get-Content $motor -Raw -Encoding UTF8
+          $t = $t -replace "\`$script:Version = '[^']*'", "`$`$script:Version = '$v'"
+          Set-Content $motor $t -Encoding utf8BOM -NoNewline
+          Write-Host "Versión: $v"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar la app
+        run: npm test
+
+      - name: Probar el motor (Windows PowerShell 5.1)
+        shell: powershell
+        run: ./tests/Test-Motor.ps1
+
+      - name: Compilar el instalador y publicarlo en Releases
+        run: npx electron-builder --win nsis --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Añadir la versión de consola (sin instalación, también para Windows de 32 bits)
+        shell: pwsh
+        run: |
+          $dir = 'dist/DoctorPC-Consola'
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          Copy-Item engine/* $dir -Recurse
+          Compress-Archive -Path "$dir/*" -DestinationPath dist/DoctorPC-Consola.zip -Force
+          gh release upload '${{ github.ref_name }}' dist/DoctorPC-Consola.zip --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src doctorpc:; connect-src 'self'">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Doctor PC</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <aside class="lateral">
+    <div class="marca"><img src="icon.png" alt=""><div><b>Doctor PC</b><small id="version">v—</small></div></div>
+    <nav>
+      <button class="nav activo" data-vista="analizar"><span class="ico">◎</span>Analizar</button>
+      <button class="nav" data-vista="informes"><span class="ico">▤</span>Informes</button>
+      <button class="nav" data-vista="reparaciones"><span class="ico">✚</span>Reparaciones</button>
+      <button class="nav" data-vista="ajustes"><span class="ico">⚙</span>Ajustes</button>
+      <button class="nav" data-vista="acerca"><span class="ico">ⓘ</span>Acerca de</button>
+    </nav>
+    <button id="pildora-update" class="pildora oculto" data-vista="acerca"></button>
+    <div class="pie-lateral">Todo se analiza en tu PC.<br>Nada sale de tu equipo.</div>
+  </aside>
+
+  <main>
+    <!-- ANALIZAR -->
+    <section id="v-analizar" class="vista activa">
+      <div id="panel-inicio">
+        <div class="hero">
+          <div>
+            <h1>Descubre qué le pasa a tu PC</h1>
+            <p>Doctor PC revisa el hardware, los discos, tus juegos y los errores de Windows. Después te explica qué falla y te propone la solución más barata primero.</p>
+            <button id="btn-analizar" class="btn grande">Analizar mi PC</button>
+            <div class="nota" id="nota-duracion">Tarda entre 1 y 2 minutos. No modifica nada.</div>
+          </div>
+          <div class="hero-ilustracion" aria-hidden="true">
+            <svg viewBox="0 0 200 150"><rect x="20" y="15" width="160" height="100" rx="10" class="m"/><rect x="32" y="27" width="136" height="76" rx="4" class="p"/><polyline points="40,70 70,70 80,48 92,92 104,58 114,70 160,70" class="l"/><rect x="80" y="118" width="40" height="8" rx="3" class="m"/><rect x="60" y="128" width="80" height="6" rx="3" class="m"/></svg>
+          </div>
+        </div>
+
+        <div class="tarjetas-opciones">
+          <label class="opcion"><span>País donde comprarías piezas</span><select id="o-pais"></select></label>
+          <div class="opcion"><span>Presupuesto para mejoras (USD)</span>
+            <div class="fila"><input id="o-presupuesto" type="number" min="0" step="5"><label class="chk"><input id="o-sinlimite" type="checkbox"> Sin límite</label></div>
+            <small>0 = solo soluciones gratis</small></div>
+          <label class="opcion interruptor"><input id="o-usados" type="checkbox"><span><b>Aceptar piezas usadas</b><small>Suelen costar la mitad</small></span></label>
+          <label class="opcion interruptor"><input id="o-admin" type="checkbox"><span><b>Permisos de administrador</b><small>Recomendado: lee la salud de los discos y más registros</small></span></label>
+          <label class="opcion interruptor"><input id="o-juego" type="checkbox"><span><b>Modo juego</b><small>Mide mientras juegas para saber qué frena al juego</small></span></label>
+          <label class="opcion" id="caja-segundos"><span>Duración del modo juego</span>
+            <select id="o-segundos"><option value="60">1 minuto</option><option value="120">2 minutos</option><option value="180">3 minutos</option><option value="300">5 minutos</option></select></label>
+        </div>
+
+        <div id="ultimo" class="tarjeta oculto"></div>
+
+        <div class="tecnicos">
+          <span><b>¿Eres técnico?</b> Pide al cliente el archivo <code>.json</code> de su análisis y genera aquí el informe con tu país y presupuesto.</span>
+          <button id="btn-json" class="btn secundario">Abrir datos de un cliente…</button>
+        </div>
+      </div>
+
+      <div id="panel-progreso" class="oculto">
+        <div class="progreso-caja">
+          <h2 id="p-titulo">Analizando tu PC…</h2>
+          <div id="p-aviso" class="aviso oculto"></div>
+          <div class="barra"><i id="p-barra"></i></div>
+          <div class="p-fila"><span id="p-texto">Preparando…</span><b id="p-pct">0 %</b></div>
+          <div class="p-botones">
+            <button id="btn-empezar" class="btn oculto">Ya estoy jugando: empezar a medir</button>
+            <button id="btn-cancelar" class="btn secundario">Cancelar</button>
+          </div>
+          <p class="nota" id="p-nota">Puedes seguir usando el PC con normalidad, pero evita tareas pesadas para que la medición sea fiable.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- INFORME -->
+    <section id="v-informe" class="vista">
+      <div class="barra-informe">
+        <button class="btn secundario" id="btn-volver">← Informes</button>
+        <div class="titulo-informe" id="i-titulo"></div>
+        <div class="recalc">
+          <select id="r-pais" title="País"></select>
+          <input id="r-presupuesto" type="number" min="0" step="5" title="Presupuesto en USD">
+          <button class="btn secundario" id="btn-recalcular" title="Rehace el plan de mejora con otro país o presupuesto">Recalcular plan</button>
+        </div>
+        <button class="btn secundario" id="btn-navegador">Abrir en el navegador</button>
+        <button class="btn secundario" id="btn-archivo">Mostrar archivo</button>
+      </div>
+      <iframe id="marco" title="Informe de Doctor PC"></iframe>
+    </section>
+
+    <!-- INFORMES -->
+    <section id="v-informes" class="vista">
+      <div class="cabecera"><h1>Informes</h1><button class="btn secundario" id="btn-carpeta">Abrir carpeta</button></div>
+      <p class="sub">Cada análisis guarda un informe HTML y un archivo <code>.json</code> con los datos. El .json sirve para enviarlo a un técnico.</p>
+      <div id="lista-informes" class="lista"></div>
+    </section>
+
+    <!-- REPARACIONES -->
+    <section id="v-reparaciones" class="vista">
+      <div class="cabecera"><h1>Reparaciones guiadas</h1></div>
+      <p class="sub">Herramientas oficiales de Windows, una por una. Cada una explica qué hace y pide confirmación. Los cambios quedan anotados en <code>registro_cambios.log</code>. No existe un botón "Reparar todo".</p>
+      <div id="lista-reparaciones" class="lista"></div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section id="v-ajustes" class="vista">
+      <div class="cabecera"><h1>Ajustes</h1></div>
+      <div class="tarjeta">
+        <h3>Carpetas de juegos</h3>
+        <p class="sub">Doctor PC encuentra solo los juegos de Steam, Epic, GOG, Ubisoft, EA, Riot, Xbox, Minecraft y Roblox, y revisa las carpetas <code>X:\Games</code> y <code>X:\Juegos</code>. Si tienes juegos en otra carpeta, añádela aquí.</p>
+        <div id="lista-carpetas"></div>
+        <button class="btn secundario" id="btn-add-carpeta">Añadir carpeta…</button>
+      </div>
+      <div class="tarjeta">
+        <h3>Fuente de alimentación</h3>
+        <p class="sub">Windows no puede leer la potencia de la fuente. Si la conoces (está en su etiqueta), Doctor PC solo recomendará tarjetas gráficas que pueda alimentar.</p>
+        <div class="fila"><input id="a-fuente" type="number" min="0" step="50" placeholder="Ej.: 450"><span>W (0 = no la conozco)</span></div>
+      </div>
+      <div class="tarjeta">
+        <h3>Privacidad</h3>
+        <label class="chk"><input id="a-anonimo" type="checkbox"> Ocultar el nombre del equipo en los informes</label>
+        <p class="sub">Los informes nunca incluyen tu nombre de usuario ni el contenido de tus archivos.</p>
+      </div>
+      <div class="tarjeta">
+        <h3>Informes</h3>
+        <p class="sub" id="a-carpeta"></p>
+        <button class="btn secundario" id="btn-carpeta2">Abrir carpeta de informes</button>
+      </div>
+    </section>
+
+    <!-- ACERCA -->
+    <section id="v-acerca" class="vista">
+      <div class="cabecera"><h1>Acerca de Doctor PC</h1></div>
+      <div class="tarjeta update-tarjeta">
+        <div>
+          <h3>Actualizaciones</h3>
+          <p id="u-texto" class="sub">Versión instalada: —</p>
+          <div id="u-notas" class="notas oculto"></div>
+          <div class="barra oculto" id="u-barra-caja"><i id="u-barra"></i></div>
+        </div>
+        <div class="u-botones">
+          <button class="btn" id="btn-update">Buscar actualizaciones</button>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h3>Cómo funciona</h3>
+        <p>Doctor PC actúa como un técnico: observa el equipo, plantea hipótesis, te dice cómo confirmarlas y propone soluciones ordenadas por coste. Funciona sin internet, salvo para buscar actualizaciones.</p>
+        <p class="sub">Los índices de rendimiento y los precios son aproximados y orientativos. Las hipótesis indican causas probables, no certezas.</p>
+        <button class="btn secundario" id="btn-github">Ver el proyecto en GitHub</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal oculto" role="dialog" aria-modal="true">
+    <div class="modal-caja">
+      <h3 id="m-titulo"></h3>
+      <div id="m-cuerpo"></div>
+      <div class="m-botones"><button class="btn secundario" id="m-no">Cancelar</button><button class="btn" id="m-si">Continuar</button></div>
+    </div>
+  </div>
+  <div id="toast" class="toast oculto"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

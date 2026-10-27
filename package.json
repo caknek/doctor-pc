@@ -1,0 +1,84 @@
+{
+  "name": "doctor-pc",
+  "productName": "Doctor PC",
+  "version": "0.2.0",
+  "description": "Doctor PC: diagnóstico explicable y gratuito para Windows",
+  "main": "main.js",
+  "author": "Miguel Romero (caknek)",
+  "license": "UNLICENSED",
+  "private": true,
+  "homepage": "https://github.com/caknek/doctor-pc",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caknek/doctor-pc.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node tests/check-app.js",
+    "dist": "electron-builder --win nsis --x64",
+    "release": "electron-builder --win nsis --x64 --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.caknek.doctorpc",
+    "productName": "Doctor PC",
+    "copyright": "© 2026 Miguel Romero",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "engine",
+        "to": "engine",
+        "filter": [
+          "**/*",
+          "!datos/config_usuario.json"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "DoctorPC-Instalador.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Doctor PC",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "DoctorPC-Instalador.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "caknek",
+        "repo": "doctor-pc",
+        "releaseType": "release"
+      }
+    ]
+  }
+}

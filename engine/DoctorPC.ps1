@@ -810,6 +810,7 @@ function Get-Juegos([string[]]$Extra) {
     if (Test-Path -LiteralPath $txt) {
         $Extra += @(Get-Content -LiteralPath $txt -Encoding UTF8 | Where-Object { $_ -and $_.Trim() -and -not $_.Trim().StartsWith('#') } | ForEach-Object { $_.Trim().Trim('"') })
     }
+    $Extra = @($Extra | ForEach-Object { "$_" -split ';' } | Where-Object { $_ } | ForEach-Object { $_.Trim().Trim('"') })   # la app envía las carpetas separadas por ';'
     foreach ($c in @($Extra | Where-Object { $_ } | Select-Object -Unique)) {
         if (-not (Test-Path -LiteralPath $c)) { continue }
         foreach ($sub in @(Get-ChildItem -LiteralPath $c -Directory -ErrorAction SilentlyContinue)) {
