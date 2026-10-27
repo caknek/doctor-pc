@@ -81,3 +81,4 @@ if ($env:OS -eq 'Windows_NT') {
 Remove-Item $salida -Recurse -Force -ErrorAction SilentlyContinue
 if ($fallos) { Write-Host "$fallos prueba(s) fallaron." -ForegroundColor Red; exit 1 }
 Write-Host 'Todas las pruebas del motor pasaron.' -ForegroundColor Green
+exit 0
