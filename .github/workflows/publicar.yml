@@ -6,7 +6,7 @@ name: Publicar versión
 on:
   push:
     branches: [main]
-    paths: ['package.json']
+    paths: ['package.json', '.github/workflows/publicar.yml']
   workflow_dispatch:
 
 permissions:
@@ -54,6 +54,17 @@ jobs:
         if: steps.version.outputs.existe == 'false'
         shell: powershell
         run: ./tests/Test-Motor.ps1
+
+      - name: Crear la etiqueta de la versión
+        if: steps.version.outputs.existe == 'false'
+        shell: pwsh
+        run: |
+          $t = 'v${{ steps.version.outputs.version }}'
+          git fetch --tags --quiet
+          if (-not (git tag -l $t)) {
+            git tag $t
+            git push origin $t
+          }
 
       - name: Compilar el instalador y publicarlo en Releases
         if: steps.version.outputs.existe == 'false'
