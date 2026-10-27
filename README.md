@@ -55,9 +55,11 @@ Motor sin la app:
 
 ## Publicar una versión
 
-1. Escribe las novedades en `build/release-notes.md`.
-2. Crea y sube la etiqueta:
+1. Cambia la versión en la app y en el motor:
    ```bash
-   git tag v0.3.0 && git push origin v0.3.0
+   npm run nueva-version -- 0.3.0
    ```
-3. GitHub Actions pone esa versión en la app y en el motor, ejecuta las pruebas en Windows, compila `DoctorPC-Instalador.exe` y lo publica en Releases junto con `latest.yml`. Las apps instaladas lo detectan y ofrecen actualizar.
+2. Escribe las novedades en `build/release-notes.md`. La app las muestra al ofrecer la actualización.
+3. Sube los cambios a `main`.
+
+GitHub Actions detecta la versión nueva, ejecuta las pruebas en Windows, compila `DoctorPC-Instalador.exe` y lo publica en Releases junto con `latest.yml`. Las apps instaladas la detectan y ofrecen actualizar. También se puede lanzar a mano desde *Actions → Publicar versión → Run workflow*.

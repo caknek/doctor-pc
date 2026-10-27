@@ -1,13 +1,20 @@
 name: Publicar versión
 
-# Al subir una etiqueta vX.Y.Z se compila el instalador y se publica en Releases.
-# La app instalada lo detecta y ofrece actualizar con su botón.
+# Publica una versión nueva cuando cambia "version" en package.json (push a main),
+# o manualmente desde la pestaña Actions. Si la versión ya está publicada, no hace nada.
+# La app instalada la detecta y ofrece actualizar con su botón.
 on:
   push:
-    tags: ['v*.*.*']
+    branches: [main]
+    paths: ['package.json']
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
 
 jobs:
   publicar:
@@ -15,44 +22,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Leer la versión
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          gh release view "v$v" --repo '${{ github.repository }}' *> $null
+          $existe = ($LASTEXITCODE -eq 0)
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "existe=$($existe.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if ($existe) { Write-Host "v$v ya está publicada: no hay nada que hacer." } else { Write-Host "Se publicará v$v" }
+          $global:LASTEXITCODE = 0
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v4
+        if: steps.version.outputs.existe == 'false'
         with:
           node-version: 22
           cache: npm
 
-      - name: Poner la versión de la etiqueta en la app y en el motor
-        shell: pwsh
-        run: |
-          $v = '${{ github.ref_name }}'.TrimStart('v')
-          npm version $v --no-git-tag-version --allow-same-version
-          $motor = 'engine/DoctorPC.ps1'
-          $t = Get-Content $motor -Raw -Encoding UTF8
-          $t = $t -replace "\`$script:Version = '[^']*'", "`$`$script:Version = '$v'"
-          Set-Content $motor $t -Encoding utf8BOM -NoNewline
-          Write-Host "Versión: $v"
-
       - name: Instalar dependencias
+        if: steps.version.outputs.existe == 'false'
         run: npm ci
 
-      - name: Comprobar la app
+      - name: Comprobar la app (incluye que la versión del motor coincida)
+        if: steps.version.outputs.existe == 'false'
         run: npm test
 
       - name: Probar el motor (Windows PowerShell 5.1)
+        if: steps.version.outputs.existe == 'false'
         shell: powershell
         run: ./tests/Test-Motor.ps1
 
       - name: Compilar el instalador y publicarlo en Releases
+        if: steps.version.outputs.existe == 'false'
         run: npx electron-builder --win nsis --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Añadir la versión de consola (sin instalación, también para Windows de 32 bits)
+        if: steps.version.outputs.existe == 'false'
         shell: pwsh
         run: |
           $dir = 'dist/DoctorPC-Consola'
           New-Item -ItemType Directory -Path $dir -Force | Out-Null
           Copy-Item engine/* $dir -Recurse
           Compress-Archive -Path "$dir/*" -DestinationPath dist/DoctorPC-Consola.zip -Force
-          gh release upload '${{ github.ref_name }}' dist/DoctorPC-Consola.zip --clobber
+          gh release upload 'v${{ steps.version.outputs.version }}' dist/DoctorPC-Consola.zip --clobber --repo '${{ github.repository }}'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
