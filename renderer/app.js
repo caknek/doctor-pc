@@ -571,17 +571,17 @@ api.onDisco(p => { $('#d-texto').textContent = p.texto; $('#d-barra').style.widt
 $('#btn-d-probar').onclick = async () => {
   const unidad = $('#d-unidad').value || 'C:';
   $('#btn-d-probar').disabled = true; $('#d-resultado').innerHTML = '';
-  $('#d-progreso').classList.remove('oculto'); $('#d-texto').textContent = 'Esperando el permiso de administrador…'; $('#d-barra').style.width = '3%';
+  $('#d-progreso').classList.remove('oculto'); $('#d-texto').textContent = 'Preparando la prueba…'; $('#d-barra').style.width = '3%';
   const r = await api.probarDisco(unidad);
   $('#d-progreso').classList.add('oculto'); $('#btn-d-probar').disabled = false;
   if (!r.ok) { $('#d-resultado').innerHTML = `<div class="vacio">${esc(r.mensaje)}</div>`; return; }
   const d = r.datos;
-  const filas = [['Lectura secuencial', d.LecturaSecuencial, 'Cargas de juegos, archivos grandes'], ['Escritura secuencial', d.EscrituraSecuencial, 'Copiar e instalar'], ['Lectura aleatoria', d.LecturaAleatoria, 'Arranque y apertura de programas']];
+  const filas = [['Lectura secuencial', d.LecturaSecuencial, 'Cargas de juegos, archivos grandes'], ['Escritura secuencial', d.EscrituraSecuencial, 'Copiar e instalar'], ['Lectura aleatoria 4 KB', d.LecturaAleatoria, `Arranque y apertura de programas${d.Iops ? ' · ' + Number(d.Iops).toLocaleString('es') + ' IOPS' : ''}`]];
   const esc2 = v => Math.min(100, Math.sqrt(Math.max(0, v || 0)) / Math.sqrt(3500) * 100);
   $('#d-resultado').innerHTML = `<div class="veredicto ${esc(d.Nivel)}">${ico(d.Nivel === 'lento' ? 'info' : 'check')}<div><b>${esc(d.Tipo)}</b>${esc(d.Texto)}</div></div>
     <div class="tarjeta velocidades"><div class="t-cab"><h3>Resultados de ${esc(d.Unidad)}</h3></div><div class="lista-barras">
     ${filas.map(([t, v, s]) => `<div class="fila-barra"><span class="nombre"><b>${t}</b><br><small class="sub">${s}</small></span><span class="pista"><i style="width:0%;--col:${d.Nivel === 'lento' ? 'var(--crit)' : 'var(--acc)'}" data-w="${esc2(v)}"></i></span><span class="dato"><b>${v == null ? '–' : v.toLocaleString('es')} MB/s</b></span></div>`).join('')}
-    </div><p class="nota">Referencia de lectura secuencial: disco mecánico ~120 MB/s · SSD SATA ~550 MB/s · SSD NVMe 2.000 MB/s o más.</p></div>`;
+    </div><p class="nota">Referencia de lectura secuencial: disco mecánico ~120 MB/s · SSD SATA ~550 MB/s · SSD NVMe 2.000 MB/s o más. En lectura aleatoria de 4 KB un disco mecánico da ~1 MB/s y un SSD 20 MB/s o más.</p></div>`;
   requestAnimationFrame(() => requestAnimationFrame(() => $$('#d-resultado [data-w]').forEach(i => { i.style.width = i.dataset.w + '%'; })));
   if (d.Nivel === 'excelente') confeti(80);
 };

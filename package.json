@@ -3,6 +3,13 @@
   "productName": "Doctor PC",
   "version": "0.3.0",
   "description": "Doctor PC: diagnóstico explicable y gratuito para Windows",
+  "keywords": [
+    "diagnostico",
+    "windows",
+    "pc",
+    "soporte-tecnico",
+    "gaming"
+  ],
   "main": "main.js",
   "author": "Miguel Romero (caknek)",
   "license": "UNLICENSED",

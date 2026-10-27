@@ -328,7 +328,7 @@ function pruebaDisco(unidad) {
   ocupado = 'disco';
   const seg = seguirProgreso(progreso, (tipo, p) => { if (tipo === 'PROGRESO') { barraTareas(Number(p[0])); enviar('disco', { pct: Number(p[0]) || 0, texto: p[1] || '' }); } });
   return new Promise(resolve => {
-    const proc = lanzarScript(SCRIPT_DISCO, ['-Unidad', String(unidad || 'C').slice(0, 1), '-Salida', salida, '-ArchivoProgreso', progreso], true, false);
+    const proc = lanzarScript(SCRIPT_DISCO, ['-Unidad', String(unidad || 'C').slice(0, 1), '-Salida', salida, '-ArchivoProgreso', progreso], false, false);
     let err = '';
     proc.stderr.on('data', d => { err += d.toString(); });
     proc.on('close', codigo => {
@@ -337,8 +337,7 @@ function pruebaDisco(unidad) {
       [salida, progreso].forEach(f => { try { fs.unlinkSync(f); } catch (e) { /* nada */ } });
       if (r && r.Ok) { resolve({ ok: true, datos: r }); avisar('Prueba de disco terminada', `${r.Tipo}: lectura ${r.LecturaSecuencial} MB/s`); }
       else if (r) resolve({ ok: false, mensaje: r.Error || 'La prueba no devolvió resultados.' });
-      else if (esUacRechazado(codigo, err)) resolve({ ok: false, mensaje: 'La prueba necesita permiso de administrador.' });
-      else resolve({ ok: false, mensaje: 'No se pudo completar la prueba.' });
+            else resolve({ ok: false, mensaje: 'No se pudo completar la prueba.' });
     });
     proc.on('error', e => { seg.parar(); barraTareas(null); ocupado = null; resolve({ ok: false, mensaje: e.message }); });
   });

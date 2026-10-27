@@ -111,15 +111,15 @@ if ($env:OS -eq 'Windows_NT') {
         Write-Host ("        Liberado: {0:N1} MB en {1} archivos" -f ($l.Liberado / 1MB), $l.Borrados)
         Remove-Item $nuevo -Force
     }
-    if (Test-Path (Join-Path $env:SystemRoot 'System32\winsat.exe')) {
-        Test-Paso 'Prueba de velocidad del disco (WinSAT)' {
-            $out = Join-Path $salida 'disco.json'
-            & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'prueba-disco.ps1') -Unidad C -Salida $out | Out-Null
-            $d = Get-Content $out -Raw -Encoding UTF8 | ConvertFrom-Json
-            if (-not $d.Ok) { throw $d.Error }
-            Write-Host ("        Lectura sec. {0} MB/s | escritura sec. {1} MB/s | aleatoria {2} MB/s -> {3}" -f $d.LecturaSecuencial, $d.EscrituraSecuencial, $d.LecturaAleatoria, $d.Tipo)
-        }
-    } else { Write-Host '  --    WinSAT no está en esta edición de Windows (normal en Windows Server): se omite la prueba de disco' }
+    Test-Paso 'Prueba de velocidad del disco (lectura y escritura directas)' {
+        $out = Join-Path $salida 'disco.json'
+        & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'prueba-disco.ps1') -Unidad C -Salida $out -TamanoMB 256 | Out-Null
+        $d = Get-Content $out -Raw -Encoding UTF8 | ConvertFrom-Json
+        if (-not $d.Ok) { throw $d.Error }
+        if (-not ($d.LecturaSecuencial -gt 0 -and $d.EscrituraSecuencial -gt 0 -and $d.LecturaAleatoria -gt 0)) { throw 'faltan resultados' }
+        if (Get-ChildItem $env:TEMP -Filter 'DoctorPC-prueba-disco-*' -ErrorAction SilentlyContinue) { throw 'no borró el archivo temporal' }
+        Write-Host ("        Escritura {0} MB/s | lectura {1} MB/s | aleatoria 4K {2} MB/s ({3} IOPS) -> {4}" -f $d.EscrituraSecuencial, $d.LecturaSecuencial, $d.LecturaAleatoria, $d.Iops, $d.Tipo)
+    }
 }
 
 Remove-Item $salida -Recurse -Force -ErrorAction SilentlyContinue
