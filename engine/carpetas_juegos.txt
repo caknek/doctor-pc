@@ -1,0 +1,8 @@
+# Carpetas donde tienes juegos instalados fuera de Steam, Epic, GOG, Ubisoft, EA, Riot o Xbox.
+# Una carpeta por línea. Doctor PC revisará cada subcarpeta como un juego posible.
+# Las carpetas X:\Games y X:\Juegos de cualquier unidad ya se revisan solas.
+# Las líneas que empiezan con # se ignoran.
+#
+# Ejemplos:
+# D:\Mis juegos
+# E:\Emuladores\PC

@@ -1,0 +1,548 @@
+{
+ "DoctorPC": "0.1.0",
+ "Datos": {
+  "Version": "0.1.0",
+  "Fecha": "2026-10-27T10:30:00",
+  "Equipo": "PC-DEMO-OFICINA",
+  "Admin": true,
+  "Sistema": {
+   "Equipo": "PC-DEMO-OFICINA",
+   "Fabricante": "Dell Inc.",
+   "Modelo": "OptiPlex 7010",
+   "EsPortatil": false,
+   "Windows": "Microsoft Windows 10 Pro",
+   "VersionWindows": "22H2",
+   "Build": 19045,
+   "Arquitectura": "64 bits",
+   "Instalado": "2019-03-14",
+   "UptimeDias": 9.4,
+   "InicioRapido": 1,
+   "ReinicioPendiente": true,
+   "PlanEnergiaGuid": "381b4222-f694-41f0-9685-ff5bb260df2e",
+   "PlanEnergia": "Equilibrado",
+   "Placa": "Dell Inc. 0MN1TX",
+   "BIOS": "A29",
+   "FechaBIOS": "2018-06-20",
+   "Bateria": null,
+   "Antivirus": [
+    {
+     "Nombre": "Windows Defender",
+     "Activo": true
+    }
+   ],
+   "PaginacionMB": 5120,
+   "PaginacionPicoMB": 2210,
+   "PaginacionAuto": true,
+   "UnidadSistema": "C:"
+  },
+  "Cpu": {
+   "Nombre": "Intel(R) Core(TM) i5-3470 CPU @ 3.20GHz",
+   "Fabricante": "GenuineIntel",
+   "Nucleos": 4,
+   "Hilos": 4,
+   "MHzMax": 3201,
+   "MHzActual": 3201,
+   "Socket": "CPU 1",
+   "L3KB": 6144
+  },
+  "Gpus": [
+   {
+    "Nombre": "Intel(R) HD Graphics 2500",
+    "Fabricante": "Intel",
+    "VramGB": 1.0,
+    "Driver": "10.18.10.5161",
+    "FechaDriver": "2019-08-13",
+    "Resolucion": "1920x1080",
+    "Hz": 60,
+    "Estado": "OK",
+    "Virtual": false
+   }
+  ],
+  "Ram": {
+   "TotalGB": 7.9,
+   "InstaladaGB": 8,
+   "Ranuras": 4,
+   "MaximoGB": 32,
+   "Modulos": [
+    {
+     "CapacidadGB": 8,
+     "Tipo": "DDR3",
+     "Formato": "DIMM",
+     "MHz": 1600,
+     "MHzActual": 1600,
+     "Ranura": "DIMM1",
+     "Banco": "ChannelA-DIMM0",
+     "Fabricante": "Kingston",
+     "Modelo": "KVR16N11/8"
+    }
+   ]
+  },
+  "Discos": [
+   {
+    "Numero": 0,
+    "Modelo": "ST500DM002-1BD142",
+    "TamanoGB": 465.8,
+    "Tipo": "HDD",
+    "Bus": "SATA",
+    "EsSSD": false,
+    "EsHDD": true,
+    "Externo": false,
+    "Salud": "Healthy",
+    "Estado": "OK",
+    "TempC": 41,
+    "TempMaxC": 49,
+    "DesgastePct": null,
+    "Horas": 31250,
+    "ErroresLectura": 0,
+    "Volumenes": [
+     {
+      "Letra": "C:",
+      "TamanoGB": 464.9,
+      "LibreGB": 34.2,
+      "Etiqueta": ""
+     }
+    ]
+   }
+  ],
+  "Volumenes": [
+   {
+    "Letra": "C:",
+    "TamanoGB": 464.9,
+    "LibreGB": 34.2,
+    "Sistema": true
+   }
+  ],
+  "FalloPredicho": [],
+  "Temperaturas": [],
+  "Eventos": {
+   "Dias": 30,
+   "ApagadosInesperados": 2,
+   "FechasApagados": [
+    "2026-10-21 19:42",
+    "2026-10-09 21:15"
+   ],
+   "Pantallazos": [
+    {
+     "Fecha": "2026-10-21 19:41",
+     "Codigo": "0x0000001A"
+    }
+   ],
+   "ReiniciosDriverVideo": 0,
+   "ErroresDisco": 0,
+   "DiscosConError": [],
+   "ErroresNtfs": 0,
+   "ReiniciosControladorDisco": 0,
+   "MemoriaVirtualBaja": 1,
+   "ErroresWhea": 0,
+   "WheaFatales": 0,
+   "CierresApps": [
+    {
+     "App": "GTA5.exe",
+     "Veces": 3,
+     "Modulo": "KERNELBASE.dll",
+     "Ultima": "2026-10-24"
+    },
+    {
+     "App": "chrome.exe",
+     "Veces": 2,
+     "Modulo": "chrome_elf.dll",
+     "Ultima": "2026-10-18"
+    }
+   ],
+   "BloqueosApps": []
+  },
+  "Dispositivos": [
+   {
+    "Nombre": "Controlador de comunicaciones serie PCI",
+    "Codigo": 28,
+    "Clase": "",
+    "Id": "PCI\\VEN_8086&DEV_1E3D"
+   }
+  ],
+  "Inicio": [
+   {
+    "Nombre": "OneDrive",
+    "Comando": "\"C:\\Users\\<usuario>\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Steam",
+    "Comando": "\"C:\\Program Files (x86)\\Steam\\steam.exe\" -silent",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "EpicGamesLauncher",
+    "Comando": "\"C:\\Program Files (x86)\\Epic Games\\Launcher\\Portal\\Binaries\\Win32\\EpicGamesLauncher.exe\" -silent",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Discord",
+    "Comando": "Update.exe --processStart Discord.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "RiotClient",
+    "Comando": "RiotClientServices.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Spotify",
+    "Comando": "Spotify.exe /background",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "AdobeGCInvoker",
+    "Comando": "AdobeGCClient.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "iTunesHelper",
+    "Comando": "iTunesHelper.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "CCleaner",
+    "Comando": "CCleaner64.exe /MONITOR",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "WhatsApp",
+    "Comando": "WhatsApp.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Zoom",
+    "Comando": "Zoom.exe --autostart",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "SecurityHealth",
+    "Comando": "SecurityHealthSystray.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "RtHDVCpl",
+    "Comando": "RtkNGUI64.exe -s",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Teams",
+    "Comando": "ms-teams.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": false
+   }
+  ],
+  "Juegos": [
+   {
+    "Nombre": "Grand Theft Auto V Legacy",
+    "Tienda": "Steam",
+    "AppId": 271590,
+    "Ruta": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Grand Theft Auto V",
+    "Exe": "GTA5.exe",
+    "TamanoGB": 95.4,
+    "Unidad": "C:"
+   },
+   {
+    "Nombre": "Fortnite",
+    "Tienda": "Epic Games",
+    "AppId": null,
+    "Ruta": "C:\\Program Files\\Epic Games\\Fortnite",
+    "Exe": "FortniteLauncher.exe",
+    "TamanoGB": 38.2,
+    "Unidad": "C:"
+   },
+   {
+    "Nombre": "VALORANT",
+    "Tienda": "Riot",
+    "AppId": null,
+    "Ruta": "C:\\Riot Games\\VALORANT",
+    "Exe": "VALORANT.exe",
+    "TamanoGB": 41.7,
+    "Unidad": "C:"
+   },
+   {
+    "Nombre": "Minecraft: Java Edition",
+    "Tienda": "Minecraft",
+    "AppId": null,
+    "Ruta": "C:\\Users\\<usuario>\\AppData\\Roaming\\.minecraft",
+    "Exe": "",
+    "TamanoGB": null,
+    "Unidad": "C:"
+   },
+   {
+    "Nombre": "Hollow Knight",
+    "Tienda": "Carpeta",
+    "AppId": null,
+    "Ruta": "C:\\Juegos\\Hollow Knight",
+    "Exe": "hollow_knight.exe",
+    "TamanoGB": 8.9,
+    "Unidad": "C:"
+   }
+  ],
+  "Muestreo": {
+   "Segundos": 20,
+   "ModoJuego": false,
+   "Muestras": [
+    {
+     "T": 0,
+     "Cpu": 33.7,
+     "NucleoMax": 61.0,
+     "CpuPerf": 99,
+     "RamLibreMB": 1024,
+     "Commit": 80,
+     "Paginas": 88,
+     "Gpu": 2.8,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 1.3,
+       "LatMs": 88.3,
+       "Cola": 1,
+       "MBs": 1.7
+      }
+     ]
+    },
+    {
+     "T": 2,
+     "Cpu": 37.1,
+     "NucleoMax": 64.6,
+     "CpuPerf": 97,
+     "RamLibreMB": 1010,
+     "Commit": 81,
+     "Paginas": 103,
+     "Gpu": 5.7,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 13.9,
+       "LatMs": 96.2,
+       "Cola": 1,
+       "MBs": 5.6
+      }
+     ]
+    },
+    {
+     "T": 4,
+     "Cpu": 36.3,
+     "NucleoMax": 94.1,
+     "CpuPerf": 89,
+     "RamLibreMB": 1086,
+     "Commit": 76,
+     "Paginas": 254,
+     "Gpu": 1.7,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 2.6,
+       "LatMs": 67.4,
+       "Cola": 6,
+       "MBs": 2.4
+      }
+     ]
+    },
+    {
+     "T": 6,
+     "Cpu": 42.9,
+     "NucleoMax": 80.6,
+     "CpuPerf": 94,
+     "RamLibreMB": 1510,
+     "Commit": 83,
+     "Paginas": 72,
+     "Gpu": 3.8,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 13.6,
+       "LatMs": 87.1,
+       "Cola": 5,
+       "MBs": 4.4
+      }
+     ]
+    },
+    {
+     "T": 8,
+     "Cpu": 33.3,
+     "NucleoMax": 78.4,
+     "CpuPerf": 96,
+     "RamLibreMB": 1256,
+     "Commit": 75,
+     "Paginas": 132,
+     "Gpu": 4.5,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 5.4,
+       "LatMs": 95.3,
+       "Cola": 5,
+       "MBs": 5.0
+      }
+     ]
+    },
+    {
+     "T": 10,
+     "Cpu": 34.4,
+     "NucleoMax": 73.0,
+     "CpuPerf": 98,
+     "RamLibreMB": 1024,
+     "Commit": 73,
+     "Paginas": 302,
+     "Gpu": 3.1,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 16.7,
+       "LatMs": 51.0,
+       "Cola": 4,
+       "MBs": 4.4
+      }
+     ]
+    },
+    {
+     "T": 12,
+     "Cpu": 56.6,
+     "NucleoMax": 58.1,
+     "CpuPerf": 97,
+     "RamLibreMB": 1271,
+     "Commit": 77,
+     "Paginas": 219,
+     "Gpu": 4.0,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 12.8,
+       "LatMs": 82.9,
+       "Cola": 1,
+       "MBs": 8.6
+      }
+     ]
+    },
+    {
+     "T": 14,
+     "Cpu": 39.1,
+     "NucleoMax": 81.6,
+     "CpuPerf": 89,
+     "RamLibreMB": 1267,
+     "Commit": 82,
+     "Paginas": 335,
+     "Gpu": 6.0,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 18.1,
+       "LatMs": 64.9,
+       "Cola": 4,
+       "MBs": 8.1
+      }
+     ]
+    },
+    {
+     "T": 16,
+     "Cpu": 34.5,
+     "NucleoMax": 92.6,
+     "CpuPerf": 94,
+     "RamLibreMB": 1575,
+     "Commit": 73,
+     "Paginas": 292,
+     "Gpu": 1.3,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 16.9,
+       "LatMs": 48.6,
+       "Cola": 2,
+       "MBs": 4.2
+      }
+     ]
+    },
+    {
+     "T": 18,
+     "Cpu": 55.0,
+     "NucleoMax": 74.9,
+     "CpuPerf": 91,
+     "RamLibreMB": 1361,
+     "Commit": 80,
+     "Paginas": 182,
+     "Gpu": 5.4,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 18.0,
+       "LatMs": 125.7,
+       "Cola": 3,
+       "MBs": 6.7
+      }
+     ]
+    }
+   ],
+   "TopCpu": [
+    {
+     "Nombre": "MsMpEng",
+     "Cpu": 14.2,
+     "RamMB": 310
+    },
+    {
+     "Nombre": "SearchIndexer",
+     "Cpu": 6.1,
+     "RamMB": 95
+    },
+    {
+     "Nombre": "chrome",
+     "Cpu": 5.3,
+     "RamMB": 1450
+    },
+    {
+     "Nombre": "svchost",
+     "Cpu": 3.9,
+     "RamMB": 620
+    },
+    {
+     "Nombre": "Discord",
+     "Cpu": 1.2,
+     "RamMB": 380
+    }
+   ],
+   "TopRam": [
+    {
+     "Nombre": "chrome",
+     "Cpu": 5.3,
+     "RamMB": 1450
+    },
+    {
+     "Nombre": "svchost",
+     "Cpu": 3.9,
+     "RamMB": 620
+    },
+    {
+     "Nombre": "Discord",
+     "Cpu": 1.2,
+     "RamMB": 380
+    },
+    {
+     "Nombre": "MsMpEng",
+     "Cpu": 14.2,
+     "RamMB": 310
+    },
+    {
+     "Nombre": "steamwebhelper",
+     "Cpu": 0.8,
+     "RamMB": 290
+    }
+   ],
+   "TopGpu": []
+  },
+  "Avisos": []
+ }
+}

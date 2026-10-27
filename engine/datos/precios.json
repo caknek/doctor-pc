@@ -1,0 +1,70 @@
+{
+  "actualizado": "2026-10",
+  "nota": "Precios de REFERENCIA en USD, aproximados y editables. No son precios en vivo. La RAM y los SSD subieron mucho desde finales de 2025: revisa el mercado local antes de comprar. Cada rango es [mínimo, máximo]. 'usado' = mercado de segunda mano; null = no aplica.",
+  "paises": {
+    "Venezuela":      { "moneda": "USD", "tasa_usd": 1,    "factor": 1.30, "nota": "Importación encarece lo nuevo; el mercado de usados suele ser la mejor opción." },
+    "Colombia":       { "moneda": "COP", "tasa_usd": 4100, "factor": 1.20 },
+    "Chile":          { "moneda": "CLP", "tasa_usd": 950,  "factor": 1.15 },
+    "México":         { "moneda": "MXN", "tasa_usd": 18.5, "factor": 1.10 },
+    "Perú":           { "moneda": "PEN", "tasa_usd": 3.7,  "factor": 1.15 },
+    "Argentina":      { "moneda": "USD", "tasa_usd": 1,    "factor": 1.50, "nota": "Precios muy variables; compara siempre en USD." },
+    "Ecuador":        { "moneda": "USD", "tasa_usd": 1,    "factor": 1.20 },
+    "España":         { "moneda": "EUR", "tasa_usd": 0.88, "factor": 1.05 },
+    "Estados Unidos": { "moneda": "USD", "tasa_usd": 1,    "factor": 1.00 },
+    "Otro":           { "moneda": "USD", "tasa_usd": 1,    "factor": 1.15 }
+  },
+  "ssd": [
+    { "id": "ssd_sata_256",  "nombre": "SSD SATA 2,5\" 240-256 GB", "gb": 240,  "interfaz": "SATA", "nuevo": [22, 32], "usado": [12, 20] },
+    { "id": "ssd_sata_512",  "nombre": "SSD SATA 2,5\" 480-512 GB", "gb": 480,  "interfaz": "SATA", "nuevo": [35, 50], "usado": [22, 32] },
+    { "id": "ssd_sata_1tb",  "nombre": "SSD SATA 2,5\" 1 TB",       "gb": 960,  "interfaz": "SATA", "nuevo": [65, 90], "usado": [45, 60] },
+    { "id": "ssd_nvme_512",  "nombre": "SSD NVMe M.2 500-512 GB",   "gb": 500,  "interfaz": "NVMe", "nuevo": [38, 55], "usado": [25, 35] },
+    { "id": "ssd_nvme_1tb",  "nombre": "SSD NVMe M.2 1 TB",         "gb": 1000, "interfaz": "NVMe", "nuevo": [65, 95], "usado": [45, 65] }
+  ],
+  "ram": [
+    { "tipo": "DDR3", "gb": 4,  "nuevo": null,      "usado": [5, 9] },
+    { "tipo": "DDR3", "gb": 8,  "nuevo": [18, 25],  "usado": [9, 15] },
+    { "tipo": "DDR4", "gb": 4,  "nuevo": null,      "usado": [8, 12] },
+    { "tipo": "DDR4", "gb": 8,  "nuevo": [30, 45],  "usado": [15, 25] },
+    { "tipo": "DDR4", "gb": 16, "nuevo": [55, 80],  "usado": [30, 45] },
+    { "tipo": "DDR5", "gb": 8,  "nuevo": [40, 55],  "usado": [25, 35] },
+    { "tipo": "DDR5", "gb": 16, "nuevo": [70, 110], "usado": [45, 70] },
+    { "tipo": "DDR5", "gb": 32, "nuevo": [130, 200],"usado": [90, 130] }
+  ],
+  "gpu": [
+    { "id": "rx580",     "nombre": "Radeon RX 580 8 GB",                 "indice": 100, "vram": 8,  "fuente_w": 450, "conector": "1x 8 pines",  "nuevo": null,       "usado": [50, 75],   "nota": "Muy buena relación precio/rendimiento de segunda mano. Sin drivers nuevos de AMD: solo mantenimiento." },
+    { "id": "gtx1650",   "nombre": "GeForce GTX 1650 4 GB (sin conector)","indice": 70,  "vram": 4,  "fuente_w": 300, "conector": "ninguno",     "nuevo": [140, 170], "usado": [65, 95],   "nota": "Se alimenta solo del slot PCIe: ideal para PC de marca (Dell, HP, Lenovo) con fuente pequeña. Existen versiones de perfil bajo." },
+    { "id": "rx6400",    "nombre": "Radeon RX 6400 4 GB (sin conector)", "indice": 60,  "vram": 4,  "fuente_w": 300, "conector": "ninguno",     "nuevo": [110, 135], "usado": [75, 95],   "nota": "Perfil bajo y sin conector. Usa PCIe x4: en placas PCIe 3.0 pierde algo de rendimiento. No tiene codificador de vídeo." },
+    { "id": "gtx1660s",  "nombre": "GeForce GTX 1660 Super 6 GB",        "indice": 120, "vram": 6,  "fuente_w": 450, "conector": "1x 8 pines",  "nuevo": null,       "usado": [90, 120] },
+    { "id": "rx6600",    "nombre": "Radeon RX 6600 8 GB",                "indice": 150, "vram": 8,  "fuente_w": 450, "conector": "1x 8 pines",  "nuevo": [190, 230], "usado": [130, 165] },
+    { "id": "rtx3060",   "nombre": "GeForce RTX 3060 12 GB",             "indice": 165, "vram": 12, "fuente_w": 550, "conector": "1x 8 pines",  "nuevo": [260, 300], "usado": [170, 210], "nota": "12 GB de VRAM: aguanta mejor los juegos nuevos." },
+    { "id": "arcb580",   "nombre": "Intel Arc B580 12 GB",               "indice": 210, "vram": 12, "fuente_w": 550, "conector": "1x 8 pines",  "nuevo": [250, 290], "usado": [200, 240], "nota": "Necesita Resizable BAR activado en la BIOS (Intel 10.ª gen+/Ryzen 3000+). En CPU antiguas rinde bastante menos." },
+    { "id": "rtx5060",   "nombre": "GeForce RTX 5060 8 GB",              "indice": 220, "vram": 8,  "fuente_w": 550, "conector": "1x 8 pines",  "nuevo": [299, 340], "usado": [240, 280] },
+    { "id": "rx9060xt",  "nombre": "Radeon RX 9060 XT 8 GB",             "indice": 250, "vram": 8,  "fuente_w": 550, "conector": "1x 8 pines",  "nuevo": [280, 330], "usado": null }
+  ],
+  "cpu": {
+    "LGA775":     [ { "nombre": "Core 2 Quad Q9650", "indice": 30, "nuevo": null, "usado": [10, 18], "nota": "Plataforma de 2008: la mejora es pequeña. Considera cambiar placa, CPU y RAM usados." } ],
+    "LGA1155":    [ { "nombre": "Xeon E3-1230 v2",   "indice": 63, "nuevo": null, "usado": [10, 18], "nota": "Equivale a un i7-3770 sin gráficos integrados: necesitas tarjeta gráfica dedicada. Compatible con la mayoría de placas H61/B75/H77/Z77 (en H61 puede requerir BIOS)." },
+                    { "nombre": "Core i7-3770",      "indice": 65, "nuevo": null, "usado": [20, 30], "nota": "En placas H61 antiguas puede requerir actualizar la BIOS." } ],
+    "LGA1150":    [ { "nombre": "Xeon E3-1231 v3",   "indice": 72, "nuevo": null, "usado": [18, 28], "nota": "Equivale a un i7-4770 sin gráficos integrados: necesitas tarjeta gráfica dedicada." },
+                    { "nombre": "Core i7-4790",      "indice": 75, "nuevo": null, "usado": [35, 50], "nota": "En placas H81/B85 de primera hornada puede requerir actualizar la BIOS." } ],
+    "LGA1151":    [ { "nombre": "Core i7-6700",      "indice": 90, "nuevo": null, "usado": [45, 60] },
+                    { "nombre": "Core i7-7700",      "indice": 95, "nuevo": null, "usado": [55, 70], "nota": "En placas serie 100 (H110/B150) requiere BIOS actualizada." } ],
+    "LGA1151v2":  [ { "nombre": "Core i5-9400F",     "indice": 102,"nuevo": null, "usado": [45, 60], "nota": "Sin gráficos integrados (F). Solo placas serie 300; en H310/B360 de primera hornada puede requerir BIOS." },
+                    { "nombre": "Core i7-8700",      "indice": 118,"nuevo": null, "usado": [70, 90] } ],
+    "LGA1200":    [ { "nombre": "Core i5-10400F",    "indice": 110,"nuevo": null, "usado": [50, 65], "nota": "Sin gráficos integrados (F)." },
+                    { "nombre": "Core i5-11400F",    "indice": 130,"nuevo": [95, 115], "usado": [65, 80], "nota": "Solo placas serie 500 (o algunas 400 con BIOS)." } ],
+    "LGA1700":    [ { "nombre": "Core i5-12400F",    "indice": 155,"nuevo": [100, 125], "usado": [80, 95], "nota": "Sin gráficos integrados (F)." },
+                    { "nombre": "Core i5-13400F",    "indice": 168,"nuevo": [160, 190], "usado": [120, 145], "nota": "En placas serie 600 requiere BIOS actualizada." } ],
+    "AM3+":       [ { "nombre": "FX-8350",           "indice": 48, "nuevo": null, "usado": [20, 30], "nota": "Consume mucho (125 W): revisa que la placa lo soporte y que el disipador sea bueno." } ],
+    "AM4":        [ { "nombre": "Ryzen 5 5500",      "indice": 135,"nuevo": [70, 90], "usado": [50, 65], "nota": "Placas A320/B350/B450/X470 necesitan una BIOS reciente ANTES de instalarlo. Sin gráficos integrados." },
+                    { "nombre": "Ryzen 5 5600",      "indice": 150,"nuevo": [90, 115], "usado": [70, 85], "nota": "Placas A320/B350/B450/X470 necesitan una BIOS reciente ANTES de instalarlo. Sin gráficos integrados." },
+                    { "nombre": "Ryzen 7 5700X3D",   "indice": 185,"nuevo": [190, 230], "usado": [150, 180], "nota": "La mejor CPU para juegos en AM4. Requiere BIOS reciente." } ],
+    "AM5":        [ { "nombre": "Ryzen 5 7500F",     "indice": 185,"nuevo": [110, 140], "usado": [90, 110] },
+                    { "nombre": "Ryzen 5 9600X",     "indice": 210,"nuevo": [190, 230], "usado": [150, 180] } ],
+    "LGA2011":    [ { "nombre": "Xeon E5-2680 v2 / E5-2690 v2", "indice": 62, "nuevo": null, "usado": [8, 15], "nota": "Típico de placas X79 chinas. Mucho núcleo, frecuencia baja." } ],
+    "LGA2011-3":  [ { "nombre": "Xeon E5-2680 v4 / E5-2690 v4", "indice": 78, "nuevo": null, "usado": [15, 25], "nota": "Típico de placas X99 chinas. Activa el 'turbo unlock' solo si tu placa lo soporta." } ]
+  },
+  "otros": {
+    "pasta_termica": { "nombre": "Pasta térmica + limpieza de polvo", "nuevo": [4, 10], "usado": null }
+  }
+}
