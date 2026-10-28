@@ -5,7 +5,10 @@
 //
 //   --muestras 0     lee sin parar (por defecto) hasta que termine el proceso --padre
 //   --salida         añade las líneas a un archivo (necesario cuando se ejecuta como administrador)
-//   --control        archivo con el intervalo en ms (o "salir"), se relee en cada vuelta
+//   --control        archivo con el intervalo en ms (o "salir"), se relee en cada vuelta.
+//                    Puede llevar "fps=PID" para medir los FPS de ese proceso con PresentMon.
+//   --fps PID        mide los FPS de ese proceso desde el principio
+//   --prueba-csv f   calcula FPS de un CSV de PresentMon y termina (para las pruebas)
 //
 // La temperatura de la GPU (AMD, NVIDIA, Intel) no necesita permisos especiales.
 // La del procesador necesita el controlador PawnIO instalado y ejecutar como administrador.
@@ -25,7 +28,7 @@ internal static class Programa
 {
     private static int Main(string[] args)
     {
-        int intervalo = 1000, muestras = 0, padre = 0;
+        int intervalo = 1000, muestras = 0, padre = 0, fpsPid = 0;
         string salida = null, control = null;
         for (int i = 0; i < args.Length; i++)
         {
@@ -38,6 +41,10 @@ internal static class Programa
                 case "--padre": padre = Entero(sig, 0); i++; break;
                 case "--salida": salida = sig; i++; break;
                 case "--control": control = sig; i++; break;
+                case "--fps": fpsPid = Entero(sig, 0); i++; break;
+                case "--prueba-csv":
+                    Console.Out.WriteLine(MedidorFps.ProbarCsv(sig));
+                    return 0;
             }
         }
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
@@ -56,6 +63,7 @@ internal static class Programa
             else { Console.Out.WriteLine(linea); Console.Out.Flush(); }
         };
 
+        var fps = new MedidorFps(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PresentMon.exe"));
         var pc = new Computer { IsCpuEnabled = true, IsGpuEnabled = true, IsMotherboardEnabled = true };
         try
         {
@@ -73,14 +81,15 @@ internal static class Programa
             for (int t = 0; muestras == 0 || t < muestras; t++)
             {
                 if (padre > 0 && !Vivo(padre)) break;
-                if (control != null && !LeerControl(control, ref intervalo)) break;
+                if (control != null && !LeerControl(control, ref intervalo, ref fpsPid)) break;
+                try { fps.Objetivo(fpsPid); } catch { }
                 var reloj = Stopwatch.StartNew();
                 foreach (IHardware h in pc.Hardware)
                 {
                     try { Actualizar(h); } catch { /* un sensor que falla no detiene la lectura */ }
                 }
                 string linea;
-                try { linea = Muestra(pc, t, admin, pawnio); }
+                try { linea = Muestra(pc, t, admin, pawnio, fps.Disponible, fpsPid > 0 ? fps.Json() : null); }
                 catch (Exception e) { linea = "{\"t\":" + t + ",\"error\":" + Json(e.Message) + "}"; }
                 escribir(linea);
                 int resto = intervalo - (int)reloj.ElapsedMilliseconds;
@@ -89,6 +98,7 @@ internal static class Programa
         }
         finally
         {
+            try { fps.Parar(); } catch { }
             if (archivo != null) archivo.Dispose();
             try { pc.Close(); } catch { }
         }
@@ -133,10 +143,12 @@ internal static class Programa
         return m;
     }
 
-    private static string Muestra(Computer pc, int t, bool admin, bool pawnio)
+    private static string Muestra(Computer pc, int t, bool admin, bool pawnio, bool presentMon, string fpsJson)
     {
         var sb = new StringBuilder(512);
-        sb.Append("{\"t\":").Append(t).Append(",\"admin\":").Append(Bool(admin)).Append(",\"pawnio\":").Append(Bool(pawnio));
+        sb.Append("{\"t\":").Append(t).Append(",\"admin\":").Append(Bool(admin)).Append(",\"pawnio\":").Append(Bool(pawnio))
+          .Append(",\"presentMon\":").Append(Bool(presentMon));
+        if (fpsJson != null) sb.Append(",\"fps\":").Append(fpsJson);
 
         IHardware cpu = pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
         if (cpu != null)
@@ -253,15 +265,24 @@ internal static class Programa
     }
 
     // Devuelve false si hay que terminar
-    private static bool LeerControl(string ruta, ref int intervalo)
+    private static bool LeerControl(string ruta, ref int intervalo, ref int fpsPid)
     {
         try
         {
             if (!File.Exists(ruta)) return true;
             string s = File.ReadAllText(ruta).Trim();
             if (s == "salir") return false;
-            int v;
-            if (int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out v) && v >= 250 && v <= 10000) intervalo = v;
+            int nuevoFps = 0;
+            foreach (string parte in s.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                int v;
+                if (parte.StartsWith("fps=", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(parte.Substring(4), NumberStyles.Integer, CultureInfo.InvariantCulture, out v) && v > 0) nuevoFps = v;
+                }
+                else if (int.TryParse(parte, NumberStyles.Integer, CultureInfo.InvariantCulture, out v) && v >= 250 && v <= 10000) intervalo = v;
+            }
+            fpsPid = nuevoFps;
         }
         catch { }
         return true;

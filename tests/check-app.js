@@ -10,7 +10,7 @@ for (const f of ['main.js', 'preload.js', 'overlay-preload.js', 'renderer/app.js
   ok('Sintaxis ' + f, () => execFileSync(process.execPath, ['--check', path.join(raiz, f)]));
 }
 ok('Archivos necesarios', () => {
-  for (const f of ['renderer/index.html', 'renderer/overlay.html', 'renderer/app.css', 'engine/monitor.ps1', 'engine/limpieza.ps1', 'engine/prueba-disco.ps1', 'sensores/Program.cs', 'renderer/icon.png', 'build/icon.ico', 'engine/DoctorPC.ps1', 'engine/datos/precios.json', 'engine/datos/catalogo_juegos.json', 'engine/datos/indices_hardware.json']) {
+  for (const f of ['renderer/index.html', 'renderer/overlay.html', 'renderer/app.css', 'engine/monitor.ps1', 'engine/limpieza.ps1', 'engine/prueba-disco.ps1', 'engine/permitir-fps.ps1', 'sensores/Program.cs', 'sensores/Fps.cs', 'tests/datos/presentmon.csv', 'renderer/icon.png', 'build/icon.ico', 'engine/DoctorPC.ps1', 'engine/datos/precios.json', 'engine/datos/catalogo_juegos.json', 'engine/datos/indices_hardware.json']) {
     if (!fs.existsSync(path.join(raiz, f))) throw new Error('falta ' + f);
   }
 });

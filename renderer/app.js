@@ -182,6 +182,7 @@ function pintarOpciones() {
   $('#a-umbral-cpu').value = c.umbralCpu || 90;
   $('#a-umbral-gpu').value = c.umbralGpu || 85;
   $('#a-sensores').checked = !!c.sensoresAvanzados;
+  $('#a-overlay-fps').checked = c.overlayFps !== false;
   $('#a-sonidos').checked = c.sonidos !== false;
   $('#a-volumen').value = c.volumen != null ? c.volumen : 60;
   $('#a-bandeja').checked = c.bandeja !== false;
@@ -204,6 +205,7 @@ $$('#a-tema button').forEach(b => b.onclick = async () => { await guardar({ tema
 $('#a-animaciones').onchange = async () => { await guardar({ animaciones: $('#a-animaciones').checked }); aplicarApariencia(); };
 $('#a-notificaciones').onchange = () => guardar({ notificaciones: $('#a-notificaciones').checked });
 [['#a-overlay', 'overlay'], ['#a-overlay-pos', 'overlayPos'], ['#a-overlay-tam', 'overlayTam']].forEach(([id, clave]) => $$(id + ' button').forEach(b => b.onclick = async () => { await guardar({ [clave]: b.dataset.v }); aplicarApariencia(); sonar('clic'); }));
+$('#a-overlay-fps').onchange = async () => { await guardar({ overlayFps: $('#a-overlay-fps').checked }); estadoSensoresAjustes(); };
 $('#btn-probar-overlay').onclick = async () => { await api.probarOverlay(); toast('Overlay visible durante 10 segundos. Atajo: Ctrl + Mayús + O'); };
 $('#a-alertas').onchange = () => guardar({ alertas: $('#a-alertas').checked });
 $('#a-umbral-cpu').onchange = () => guardar({ umbralCpu: Math.min(105, Math.max(60, Number($('#a-umbral-cpu').value) || 90)) });
@@ -222,10 +224,26 @@ $('#a-bandeja').onchange = () => guardar({ bandeja: $('#a-bandeja').checked });
 $('#a-inicio-win').onchange = () => guardar({ iniciarConWindows: $('#a-inicio-win').checked });
 async function estadoSensoresAjustes() {
   const e = await api.tempsEstado();
+  pintarEstadoFps(e);
   const el = $('#a-sensores-estado');
   if (!e.hayLector) { el.textContent = 'El lector de sensores se incluye en la versión instalada.'; return; }
   el.innerHTML = e.pawnio ? 'Controlador PawnIO: <b>instalado</b>.' : 'Para leer el procesador hace falta el controlador gratuito PawnIO. <a href="#" id="lnk-pawnio">Descargar PawnIO</a>';
   const l = $('#lnk-pawnio'); if (l) l.onclick = ev => { ev.preventDefault(); api.abrirAjuste('pawnio'); };
+}
+function pintarEstadoFps(e) {
+  const el = $('#a-fps-estado'), f = (e && e.fps) || {};
+  if (!$('#a-overlay-fps').checked) { el.innerHTML = ''; return; }
+  if (!e.hayLector || f.incluido === false) { el.textContent = 'PresentMon se incluye en la versión instalada.'; return; }
+  if (f.listo) { el.innerHTML = 'FPS: <b>listos</b>. Se miden solo mientras juegas, con PresentMon (Intel, gratuito).'; return; }
+  el.innerHTML = 'Para medir FPS, Windows pide un permiso. Elige una opción: <b>Sensores avanzados</b> (abajo, pide administrador al abrir Doctor PC) o dar el permiso una sola vez: <a href="#" id="lnk-permitir-fps">Permitir FPS sin administrador</a> (después cierra sesión en Windows y vuelve a entrar).';
+  const l = $('#lnk-permitir-fps');
+  if (l) l.onclick = async ev => {
+    ev.preventDefault();
+    toast('Acepta el permiso de administrador de Windows…', 4000);
+    const r = await api.permitirFps();
+    toast(r.mensaje, r.ok ? 9000 : 6000);
+    if (r.ok) sonar('exito');
+  };
 }
 $('#a-fuente').addEventListener('change', () => guardar({ fuenteW: Math.max(0, Number($('#a-fuente').value) || 0) }));
 $('#a-anonimo').addEventListener('change', () => guardar({ anonimo: $('#a-anonimo').checked }));

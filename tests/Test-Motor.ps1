@@ -42,6 +42,15 @@ Test-Paso 'Sintaxis del motor' {
     [System.Management.Automation.Language.Parser]::ParseFile($motor, [ref]$t, [ref]$e) | Out-Null
     if ($e) { throw (($e | ForEach-Object { "línea $($_.Extent.StartLineNumber): $($_.Message)" }) -join '; ') }
 }
+Test-Paso 'Todos los scripts del motor tienen BOM y sintaxis correcta' {
+    foreach ($f in Get-ChildItem (Split-Path $motor -Parent) -Filter *.ps1) {
+        $b = [IO.File]::ReadAllBytes($f.FullName)
+        if (-not ($b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)) { throw "$($f.Name) sin BOM" }
+        $t = $null; $e = $null
+        [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$t, [ref]$e) | Out-Null
+        if ($e) { throw "$($f.Name): $(($e | ForEach-Object { "línea $($_.Extent.StartLineNumber): $($_.Message)" }) -join '; ')" }
+    }
+}
 Test-Paso 'Los catálogos JSON son válidos' {
     Get-ChildItem (Join-Path (Join-Path $raiz 'engine') 'datos') -Filter *.json | ForEach-Object { $null = Get-Content $_.FullName -Raw -Encoding UTF8 | ConvertFrom-Json }
 }

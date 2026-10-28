@@ -49,7 +49,7 @@ function configPorDefecto() {
     pais, presupuesto: 50, sinLimite: false, usados: true, admin: true, modoJuegoSeg: 120, fuenteW: 0, carpetas: [], anonimo: false,
     tema: 'sistema', acento: 'azul', animaciones: true, notificaciones: true, bienvenida: false,
     sonidos: true, volumen: 60,
-    overlay: 'auto', overlayPos: 'sup-izq', overlayTam: 'normal',
+    overlay: 'auto', overlayPos: 'sup-izq', overlayTam: 'normal', overlayFps: true,
     alertas: true, umbralCpu: 90, umbralGpu: 85, sensoresAvanzados: false,
     bandeja: true, iniciarConWindows: false, avisoBandeja: false,
     tecnico: { activo: false, nombre: '', whatsapp: '', correo: '' }
@@ -316,7 +316,11 @@ function ejecutarReparacion(id) {
 // una vista abierta (Monitor, Temperaturas), el overlay en juegos o las alertas de temperatura.
 const subs = new Set();
 const sensores = { proc: null, archivo: null, ctl: null, seg: null, ultimo: null, ts: 0, elevado: false, error: null, intentoSinAdmin: false };
-const juego = { activo: false, n: '', pos: 0, neg: 0 };
+const juego = { activo: false, n: '', pid: 0, pos: 0, neg: 0 };
+let fpsPid = 0;               // proceso cuyos FPS mide PresentMon (0 = ninguno)
+let enGrupoRendimiento = null; // el usuario está en "Usuarios del registro de rendimiento" (FPS sin administrador)
+let ultimoMon = null;          // monitor del juego en primer plano
+let tamOverlayReal = null;     // tamaño que pide el overlay según su contenido
 const alerta = { cpu: { racha: 0, ultima: 0 }, gpu: { racha: 0, ultima: 0 } };
 const historialAlertas = [];
 const sesion = { inicio: Date.now(), cpu: null, gpu: null, hot: null, hist: [] };
@@ -332,7 +336,8 @@ const RUTAS_JUEGO = /\\steamapps\\common\\|\\epic games\\|\\xboxgames\\|\\riot g
 function necesitaFondo(c) { return c.overlay !== 'off' || !!c.alertas; }
 function intervaloDeseado() { return (subs.has('vista') || juego.activo || subs.has('prueba') || overlayForzado) ? 1000 : 2000; }
 function escribirSeguro(f, t) { if (f) { try { fs.writeFileSync(f, String(t)); } catch (e) { /* nada */ } } }
-function ajustarIntervalo() { const v = intervaloDeseado(); escribirSeguro(ctlMonitor, v); escribirSeguro(sensores.ctl, v); }
+function ctlSensores() { return String(intervaloDeseado()) + (fpsPid ? ` fps=${fpsPid}` : ''); }
+function ajustarIntervalo() { const v = intervaloDeseado(); escribirSeguro(ctlMonitor, v); escribirSeguro(sensores.ctl, ctlSensores()); }
 
 function actualizarMonitor() {
   const c = cargarConfig();
@@ -377,7 +382,7 @@ function arrancarSensores(forzarSinAdmin) {
   sensores.archivo = path.join(TEMP, `sensores_${id}.jsonl`);
   sensores.ctl = path.join(TEMP, `sensores_${id}.ctl`);
   fs.writeFileSync(sensores.archivo, '');
-  escribirSeguro(sensores.ctl, intervaloDeseado());
+  escribirSeguro(sensores.ctl, ctlSensores());
   const elevar = !forzarSinAdmin && !!cargarConfig().sensoresAvanzados;
   const args = ['--intervalo', String(intervaloDeseado()), '--padre', String(process.pid), '--salida', sensores.archivo, '--control', sensores.ctl];
   const proc = elevar ? lanzarElevado(SENSORES_EXE, args, false, false) : spawn(SENSORES_EXE, args, { windowsHide: true });
@@ -458,10 +463,23 @@ function procesarMuestra(m) {
   const esJ = esJuego(m.fg);
   if (esJ) { juego.pos++; juego.neg = 0; } else { juego.neg++; juego.pos = 0; }
   const antes = juego.activo;
-  if (!juego.activo && juego.pos >= 3) { juego.activo = true; juego.n = m.fg.n; }
-  if (juego.activo && juego.neg >= 4) { juego.activo = false; }
+  if (!juego.activo && juego.pos >= 3) { juego.activo = true; juego.n = m.fg.n; juego.pid = m.fg.pid || 0; }
+  if (juego.activo && esJ && m.fg.n === juego.n && m.fg.pid) juego.pid = m.fg.pid;
+  if (juego.activo && juego.neg >= 4) { juego.activo = false; juego.pid = 0; }
   if (antes !== juego.activo) { overlayForzado = null; ajustarIntervalo(); enviar('juego', { activo: juego.activo, n: juego.n }); }
   m.juego = { activo: juego.activo, n: juego.n };
+  if (m.fg && m.fg.mon) ultimoMon = m.fg.mon;
+  // FPS con PresentMon (dentro del lector de sensores): solo del juego y solo con el overlay visible
+  let objetivo = 0;
+  if (c.overlayFps !== false && overlayDeseado(c)) {
+    if (juego.activo) objetivo = juego.pid;
+    else if (m.fg && m.fg.pid && !NO_JUEGO.test(m.fg.n || '') && Number(m.fg.gpu) >= 5) objetivo = m.fg.pid;
+  }
+  if (objetivo !== fpsPid) { fpsPid = objetivo; escribirSeguro(sensores.ctl, ctlSensores()); }
+  if (fpsPid) {
+    const f = s && s.fps && s.fps.pid === fpsPid ? s.fps : null;
+    m.fps = f ? { v: f.v, bajo1: f.bajo1, ms: f.ms, estado: f.estado } : { v: null, estado: fs.existsSync(SENSORES_EXE) ? 'iniciando' : 'sin-presentmon' };
+  } else m.fps = null;
   // Overlay, alertas, bandeja y ventana
   actualizarOverlay(m, c);
   revisarAlertas(m, c);
@@ -496,10 +514,10 @@ function cargarJuegosConocidos() {
 }
 
 // ---------------- overlay (estilo MSI Afterburner): ventana transparente, siempre encima y que no recibe clics
-const TAM_OVERLAY = { normal: [244, 168], pequeno: [196, 132] };
+const TAM_OVERLAY = { normal: [170, 120], pequeno: [140, 100] };
 function crearOverlay() {
   overlay = new BrowserWindow({
-    width: 244, height: 168, frame: false, transparent: true, resizable: false, movable: false, focusable: false,
+    width: 170, height: 120, frame: false, transparent: true, resizable: false, movable: false, focusable: false,
     skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, 'overlay-preload.js'), contextIsolation: true, sandbox: true, backgroundThrottling: false }
   });
@@ -515,12 +533,12 @@ function overlayDeseado(c) {
   if (c.overlay === 'auto') return juego.activo;
   return false;
 }
-function posicionarOverlay(m, c) {
-  const [w, h] = TAM_OVERLAY[c.overlayTam === 'pequeno' ? 'pequeno' : 'normal'];
+function posicionarOverlay(c) {
+  const [w, h] = tamOverlayReal || TAM_OVERLAY[c.overlayTam === 'pequeno' ? 'pequeno' : 'normal'];
   let pant = screen.getPrimaryDisplay();
   try {
-    if (m && m.fg && m.fg.mon) {
-      const [l, t, r, b] = m.fg.mon;
+    if (ultimoMon) {
+      const [l, t, r, b] = ultimoMon;
       const centro = { x: Math.round((l + r) / 2), y: Math.round((t + b) / 2) };
       const p = process.platform === 'win32' && screen.screenToDipPoint ? screen.screenToDipPoint(centro) : centro;
       pant = screen.getDisplayNearestPoint(p);
@@ -535,13 +553,13 @@ function posicionarOverlay(m, c) {
 function actualizarOverlay(m, c) {
   if (overlayDeseado(c)) {
     if (!overlay) crearOverlay();
-    posicionarOverlay(m, c);
+    posicionarOverlay(c);
     if (!overlay.isVisible()) overlay.showInactive();
     overlay.setAlwaysOnTop(true, 'screen-saver');
     if (m) overlay.webContents.send('datos', {
       cpu: m.cpu, cpuTemp: m.cpuTemp, cpuTempFuente: m.cpuTempFuente, gpu: m.gpu, gpuTemp: m.gpuTemp, gpuHot: m.gpuHot,
       ramUsada: m.ramUsada, ramTotal: m.ramTotal, vramUsada: m.vramUsada, vramTotal: m.vramTotal, gpuReloj: m.gpuReloj, cpuReloj: m.cpuReloj,
-      juego: juego.activo ? juego.n : '', umbralCpu: c.umbralCpu, umbralGpu: c.umbralGpu, tam: c.overlayTam, gpuNombre: m.gpuNombre || ''
+      fps: m.fps, juego: juego.activo ? juego.n : '', umbralCpu: c.umbralCpu, umbralGpu: c.umbralGpu, tam: c.overlayTam, gpuNombre: m.gpuNombre || ''
     });
   } else if (overlay && overlay.isVisible()) overlay.hide();
 }
@@ -551,6 +569,58 @@ function alternarOverlay() {
   if (overlayForzado) subs.add('atajo'); else subs.delete('atajo');
   actualizarMonitor();
   if (!overlayForzado && overlay) overlay.hide();
+}
+
+ipcMain.on('overlay:tam', (e, d) => {
+  if (!overlay || !d) return;
+  const w = Math.max(60, Math.min(400, Math.round(Number(d.w) || 0))), h = Math.max(30, Math.min(300, Math.round(Number(d.h) || 0)));
+  if (!tamOverlayReal || tamOverlayReal[0] !== w || tamOverlayReal[1] !== h) { tamOverlayReal = [w, h]; posicionarOverlay(cargarConfig()); }
+});
+
+// ---------------- FPS: PresentMon necesita administrador o el grupo "Usuarios del registro de rendimiento" (S-1-5-32-559)
+function comprobarGrupoRendimiento() {
+  return new Promise(resolve => {
+    if (process.platform !== 'win32') return resolve(false);
+    let out = '';
+    const p = spawn('whoami.exe', ['/groups', '/fo', 'csv', '/nh'], { windowsHide: true });
+    p.stdout.on('data', d => { out += d.toString(); });
+    p.on('close', () => { enGrupoRendimiento = /S-1-5-32-559/i.test(out); resolve(enGrupoRendimiento); });
+    p.on('error', () => resolve(false));
+  });
+}
+function sidUsuario() {
+  return new Promise(resolve => {
+    let out = '';
+    const p = spawn('whoami.exe', ['/user', '/fo', 'csv', '/nh'], { windowsHide: true });
+    p.stdout.on('data', d => { out += d.toString(); });
+    p.on('close', () => { const m = out.match(/S-1-5-[\d-]+/); resolve(m ? m[0] : null); });
+    p.on('error', () => resolve(null));
+  });
+}
+function estadoFps() {
+  const s = Date.now() - sensores.ts < 7000 ? sensores.ultimo : null;
+  const ultimo = s && s.fps ? s.fps.estado : null;
+  return {
+    incluido: s ? !!s.presentMon : fs.existsSync(path.join(path.dirname(SENSORES_EXE), 'PresentMon.exe')),
+    admin: !!(s && s.admin), grupo: !!enGrupoRendimiento, ultimo,
+    listo: !!(s && s.admin) || !!enGrupoRendimiento
+  };
+}
+async function permitirFps() {
+  const sid = await sidUsuario();
+  if (!sid) return { ok: false, mensaje: 'No se pudo identificar tu usuario de Windows.' };
+  const script = path.join(ENGINE_DIR, 'permitir-fps.ps1');
+  return new Promise(resolve => {
+    let err = '';
+    const p = lanzarScript(script, ['-Sid', sid, '-Registro', REGISTRO], true, false);
+    if (p.stderr) p.stderr.on('data', d => { err += d.toString(); });
+    p.on('close', codigo => {
+      if (esUacRechazado(codigo, err)) return resolve({ ok: false, mensaje: 'No se concedió el permiso de administrador.' });
+      if (codigo === 0 || codigo === 2) return resolve({ ok: true, yaEstaba: codigo === 2, mensaje: codigo === 2 ? 'Tu usuario ya tenía el permiso. Si aún no ves los FPS, cierra sesión en Windows y vuelve a entrar.' : 'Listo. Cierra sesión en Windows y vuelve a entrar para que los FPS funcionen sin pedir permiso.' });
+      resolve({ ok: false, mensaje: 'Windows no permitió el cambio (código ' + codigo + ').' });
+    });
+    p.on('error', e => resolve({ ok: false, mensaje: e.message }));
+  });
 }
 
 // ---------------- alertas de temperatura
@@ -833,8 +903,10 @@ if (!app.requestSingleInstanceLock()) {
       sesion: { cpu: resumenStat(sesion.cpu), gpu: resumenStat(sesion.gpu), hot: resumenStat(sesion.hot), desde: sesion.inicio },
       hist: sesion.hist.slice(-300), alertas: historialAlertas,
       pawnio: await comprobarPawnio(), hayLector: fs.existsSync(SENSORES_EXE), sensoresElevados: sensores.elevado, errorSensores: sensores.error,
-      juego: { activo: juego.activo, n: juego.n }
+      juego: { activo: juego.activo, n: juego.n },
+      fps: (await comprobarGrupoRendimiento(), estadoFps())
     }));
+    ipcMain.handle('fps:permitir', () => permitirFps());
     ipcMain.handle('sensores:reiniciar', () => { reiniciarSensores(); return true; });
     ipcMain.handle('overlay:probar', () => {
       overlayForzado = true; subs.add('prueba'); actualizarMonitor();
@@ -873,6 +945,7 @@ if (!app.requestSingleInstanceLock()) {
     crearBandeja();
     cargarJuegosConocidos();
     comprobarPawnio();
+    comprobarGrupoRendimiento();
     aplicarInicioWindows(cargarConfig());
     try { globalShortcut.register('CommandOrControl+Shift+O', alternarOverlay); } catch (e) { /* atajo ocupado */ }
     actualizarMonitor();

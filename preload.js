@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('doctor', {
   reiniciarSensores: () => ipcRenderer.invoke('sensores:reiniciar'),
   probarOverlay: () => ipcRenderer.invoke('overlay:probar'),
   abrirAjuste: id => ipcRenderer.invoke('abrir:ajuste', id),
+  permitirFps: () => ipcRenderer.invoke('fps:permitir'),
   onAlerta: fn => ipcRenderer.on('alerta', (e, d) => fn(d)),
   onJuego: fn => ipcRenderer.on('juego', (e, d) => fn(d)),
   onIr: fn => ipcRenderer.on('ir', (e, d) => fn(d)),

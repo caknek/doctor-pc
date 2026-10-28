@@ -36,6 +36,23 @@ jobs:
           if ($j.error) { throw "Error del lector: $($j.error)" }
           if ($null -eq $j.cpu) { throw 'El lector no devolvió datos de CPU' }
 
+      - name: Probar la medición de FPS (PresentMon)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ./engine/sensores/PresentMon.exe)) { throw 'Falta PresentMon.exe' }
+          $c = & ./engine/sensores/DoctorPC.Sensores.exe --prueba-csv ./tests/datos/presentmon.csv | ConvertFrom-Json
+          Write-Host "CSV de prueba: $($c | ConvertTo-Json -Compress)"
+          if ($c.fps -lt 120 -or $c.fps -gt 150) { throw "FPS calculados fuera de rango: $($c.fps)" }
+          if ($null -eq $c.bajo1 -or $c.bajo1 -gt 40) { throw "1 % bajo incorrecto: $($c.bajo1)" }
+          $l = & ./engine/sensores/DoctorPC.Sensores.exe --muestras 4 --intervalo 1000 --fps $PID
+          $j = ($l | Where-Object { $_ -like '{*' } | Select-Object -Last 1) | ConvertFrom-Json
+          Write-Host "FPS en vivo: $($j.fps | ConvertTo-Json -Compress)"
+          if (-not $j.presentMon) { throw 'El lector no encuentra PresentMon.exe' }
+          if ($j.fps.estado -in @('error', 'permiso', 'sin-presentmon', 'terminado')) { throw "PresentMon no arrancó: $($j.fps.estado) $($j.fps.detalle)" }
+          Start-Sleep -Seconds 4
+          $quedan = Get-Process PresentMon -ErrorAction SilentlyContinue
+          if ($quedan) { throw 'PresentMon siguió abierto después de cerrar el lector' }
+
       - name: Probar el motor con Windows PowerShell 5.1 (incluye un análisis real del equipo)
         shell: powershell
         run: ./tests/Test-Motor.ps1

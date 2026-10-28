@@ -1,7 +1,7 @@
 {
   "name": "doctor-pc",
   "productName": "Doctor PC",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Doctor PC: diagnóstico explicable y gratuito para Windows",
   "keywords": [
     "diagnostico",

@@ -299,13 +299,15 @@
         </div>
         <div class="tarjeta">
           <div class="t-cab"><h3>Overlay en juegos</h3><svg class="i tenue"><use href="#i-capas"/></svg></div>
-          <p class="sub">Muestra procesador, gráfica, RAM y temperaturas con una pequeña gráfica encima del juego, como MSI Afterburner.</p>
+          <p class="sub">Muestra FPS, procesador, gráfica, RAM y temperaturas con una pequeña gráfica, sin fondo, encima del juego, como MSI Afterburner.</p>
           <small class="etq-campo">Cuándo mostrarlo</small>
           <div class="segmentado" id="a-overlay"><button data-v="auto">Al jugar</button><button data-v="siempre">Siempre</button><button data-v="off">Nunca</button></div>
           <small class="etq-campo">Posición</small>
           <div class="segmentado" id="a-overlay-pos"><button data-v="sup-izq" title="Arriba a la izquierda">↖ Arriba</button><button data-v="sup-der" title="Arriba a la derecha">Arriba ↗</button><button data-v="inf-izq" title="Abajo a la izquierda">↙ Abajo</button><button data-v="inf-der" title="Abajo a la derecha">Abajo ↘</button></div>
           <small class="etq-campo">Tamaño</small>
           <div class="segmentado" id="a-overlay-tam"><button data-v="normal">Normal</button><button data-v="pequeno">Pequeño</button></div>
+          <label class="chk espacio"><input id="a-overlay-fps" type="checkbox"> Mostrar FPS (con PresentMon de Intel)</label>
+          <div id="a-fps-estado" class="nota"></div>
           <div class="fila" style="margin-top:14px"><button class="btn secundario" id="btn-probar-overlay"><svg class="i"><use href="#i-capas"/></svg>Probar 10 segundos</button><span class="sub">Atajo: <code>Ctrl + Mayús + O</code></span></div>
           <p class="nota">Funciona con juegos en ventana o en "pantalla completa sin bordes" (la opción por defecto en la mayoría). En pantalla completa exclusiva, Windows no permite mostrar ventanas encima.</p>
         </div>

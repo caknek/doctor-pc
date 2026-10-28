@@ -22,7 +22,7 @@ Ve a **[Releases](https://github.com/caknek/doctor-pc/releases/latest)** y desca
 - **Plan de mejora:** primero lo gratis, después las compras que más rinden por dólar. Antes de sugerir una pieza revisa la compatibilidad: socket, tipo de RAM, portátil, fuente.
 - **Monitor en vivo:** CPU, RAM, GPU, discos, red, temperatura y los procesos que más consumen, cada segundo.
 - **Temperaturas y alertas:** procesador y gráfica en tiempo real (punto caliente, memoria, ventiladores, consumo), avisos si pasan tu límite y consejos de refrigeración para tu equipo.
-- **Overlay en juegos:** al estilo MSI Afterburner, con CPU, GPU, RAM y VRAM, temperatura y una gráfica pequeña bajo cada número. Se activa solo al detectar un juego (ventana o pantalla completa sin bordes). `Ctrl+Mayús+O` lo muestra u oculta.
+- **Overlay en juegos:** al estilo MSI Afterburner y sin fondo: FPS y 1 % bajo, CPU, GPU, RAM y VRAM, temperatura y una gráfica pequeña bajo cada número. Se activa solo al detectar un juego (ventana o pantalla completa sin bordes). `Ctrl+Mayús+O` lo muestra u oculta.
 - **Qué puedes hacer con tu PC:** juegos, streaming, IA local, emulación, VR, edición y más, según tu hardware real y con programas gratuitos.
 - **Optimizar juegos:** ajustes del driver (AMD Adrenalin, NVIDIA, Intel), de Windows, del hardware (XMP, SSD) y de cada juego, según el equilibrio entre tu procesador y tu gráfica.
 - **Sonidos:** al escanear, al terminar y en las alertas.
@@ -39,6 +39,10 @@ Todo se analiza en el propio PC; ningún dato sale del equipo.
 ### Temperatura del procesador
 
 Windows no deja leer los sensores del procesador sin un controlador. Doctor PC usa [LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) (MPL-2.0) con el controlador gratuito y firmado [PawnIO](https://pawnio.eu). Instálalo y activa *Sensores avanzados* en Ajustes (pide permiso de administrador). La temperatura de la gráfica funciona sin nada extra.
+
+### FPS en el overlay
+
+Los FPS se miden con [PresentMon](https://github.com/GameTechDev/PresentMon) de Intel (licencia MIT), incluido en el instalador. Windows solo deja leer los fotogramas a un administrador o a los miembros del grupo *Usuarios del registro de rendimiento*: activa *Sensores avanzados* o usa *Permitir FPS sin administrador* en Ajustes (una vez; después cierra sesión y vuelve a entrar).
 
 ## Estructura
 
