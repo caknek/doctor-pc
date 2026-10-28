@@ -29,7 +29,9 @@ const PASOS_ANALISIS = [
 ];
 const PASOS_JSON = [{ h: 31, t: 'Datos del equipo' }, { h: 96, t: 'Diagnóstico' }, { h: 101, t: 'Informe listo' }];
 
-let estado = { config: {}, paises: [], informes: [], informeActual: null, analizando: false, update: {}, pasos: PASOS_ANALISIS, vista: 'inicio', cacheDatos: {} };
+let estado = { config: {}, paises: [], informes: [], informeActual: null, analizando: false, update: {}, pasos: PASOS_ANALISIS, vista: 'inicio', cacheDatos: {}, equipo: '', pasosHechos: 0 };
+const VISTAS_MONITOR = ['monitor', 'temperaturas'];
+const sonar = (fn, ...a) => { try { if (window.Sonidos && estado.config.sonidos !== false) window.Sonidos[fn](...a); } catch (e) { /* sin audio */ } };
 
 // ================================================================== utilidades
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -126,8 +128,11 @@ function mostrar(vista) {
   estado.vista = vista;
   $$('.vista').forEach(v => v.classList.toggle('activa', v.id === 'v-' + vista));
   $$('.nav').forEach(b => b.classList.toggle('activo', b.dataset.vista === vista || (vista === 'informe' && b.dataset.vista === 'informes')));
-  if (antes === 'monitor' && vista !== 'monitor') detenerMonitor();
-  if (vista === 'monitor') iniciarMonitor();
+  if (VISTAS_MONITOR.includes(antes) && !VISTAS_MONITOR.includes(vista)) detenerMonitor();
+  if (VISTAS_MONITOR.includes(vista)) iniciarMonitor();
+  if (vista === 'temperaturas') prepararTemperaturas();
+  if (vista === 'capacidades') pintarCapacidades();
+  if (vista === 'optimizar') pintarOptimizar();
   if (vista === 'informes') pintarInformes();
   if (vista === 'comparar') prepararComparar();
   if (vista === 'reparaciones') pintarReparaciones();
@@ -151,6 +156,7 @@ function aplicarApariencia() {
   document.documentElement.classList.toggle('sin-anim', c.animaciones === false);
   $$('#a-tema button').forEach(b => b.classList.toggle('activo', b.dataset.v === (c.tema || 'sistema')));
   $$('#a-acento .muestra').forEach(b => b.classList.toggle('activo', b.dataset.v === (c.acento || 'azul')));
+  [['#a-overlay', c.overlay || 'auto'], ['#a-overlay-pos', c.overlayPos || 'sup-izq'], ['#a-overlay-tam', c.overlayTam || 'normal']].forEach(([id, v]) => $$(id + ' button').forEach(b => b.classList.toggle('activo', b.dataset.v === v)));
 }
 
 function pintarOpciones() {
@@ -172,6 +178,15 @@ function pintarOpciones() {
   pintarTecnico();
   $('#a-acento').innerHTML = ACENTOS.map(([n, col]) => `<button class="muestra" data-v="${n}" title="${n}" style="background:${col}"></button>`).join('');
   $$('#a-acento .muestra').forEach(b => b.onclick = async () => { await guardar({ acento: b.dataset.v }); aplicarApariencia(); });
+  $('#a-alertas').checked = c.alertas !== false;
+  $('#a-umbral-cpu').value = c.umbralCpu || 90;
+  $('#a-umbral-gpu').value = c.umbralGpu || 85;
+  $('#a-sensores').checked = !!c.sensoresAvanzados;
+  $('#a-sonidos').checked = c.sonidos !== false;
+  $('#a-volumen').value = c.volumen != null ? c.volumen : 60;
+  $('#a-bandeja').checked = c.bandeja !== false;
+  $('#a-inicio-win').checked = !!c.iniciarConWindows;
+  if (window.Sonidos) window.Sonidos.configurar(c.sonidos !== false, c.volumen);
   aplicarApariencia();
   pintarCarpetas();
 }
@@ -188,6 +203,30 @@ $('#o-juego').addEventListener('change', () => {
 $$('#a-tema button').forEach(b => b.onclick = async () => { await guardar({ tema: b.dataset.v }); aplicarApariencia(); });
 $('#a-animaciones').onchange = async () => { await guardar({ animaciones: $('#a-animaciones').checked }); aplicarApariencia(); };
 $('#a-notificaciones').onchange = () => guardar({ notificaciones: $('#a-notificaciones').checked });
+[['#a-overlay', 'overlay'], ['#a-overlay-pos', 'overlayPos'], ['#a-overlay-tam', 'overlayTam']].forEach(([id, clave]) => $$(id + ' button').forEach(b => b.onclick = async () => { await guardar({ [clave]: b.dataset.v }); aplicarApariencia(); sonar('clic'); }));
+$('#btn-probar-overlay').onclick = async () => { await api.probarOverlay(); toast('Overlay visible durante 10 segundos. Atajo: Ctrl + Mayús + O'); };
+$('#a-alertas').onchange = () => guardar({ alertas: $('#a-alertas').checked });
+$('#a-umbral-cpu').onchange = () => guardar({ umbralCpu: Math.min(105, Math.max(60, Number($('#a-umbral-cpu').value) || 90)) });
+$('#a-umbral-gpu').onchange = () => guardar({ umbralGpu: Math.min(100, Math.max(60, Number($('#a-umbral-gpu').value) || 85)) });
+$('#a-sensores').onchange = async () => {
+  const on = $('#a-sensores').checked;
+  await guardar({ sensoresAvanzados: on });
+  if (on) toast('Windows pedirá permiso de administrador para leer el procesador.', 5000);
+  estadoSensoresAjustes();
+};
+$('#a-sonidos').onchange = async () => { await guardar({ sonidos: $('#a-sonidos').checked }); if (window.Sonidos) window.Sonidos.configurar($('#a-sonidos').checked, Number($('#a-volumen').value)); sonar('exito'); };
+let tVol;
+$('#a-volumen').oninput = () => { if (window.Sonidos) window.Sonidos.configurar($('#a-sonidos').checked, Number($('#a-volumen').value)); clearTimeout(tVol); tVol = setTimeout(() => guardar({ volumen: Number($('#a-volumen').value) }), 300); };
+$('#btn-probar-sonido').onclick = () => { if (window.Sonidos) { window.Sonidos.configurar(true, Number($('#a-volumen').value)); window.Sonidos.fin(true); } };
+$('#a-bandeja').onchange = () => guardar({ bandeja: $('#a-bandeja').checked });
+$('#a-inicio-win').onchange = () => guardar({ iniciarConWindows: $('#a-inicio-win').checked });
+async function estadoSensoresAjustes() {
+  const e = await api.tempsEstado();
+  const el = $('#a-sensores-estado');
+  if (!e.hayLector) { el.textContent = 'El lector de sensores se incluye en la versión instalada.'; return; }
+  el.innerHTML = e.pawnio ? 'Controlador PawnIO: <b>instalado</b>.' : 'Para leer el procesador hace falta el controlador gratuito PawnIO. <a href="#" id="lnk-pawnio">Descargar PawnIO</a>';
+  const l = $('#lnk-pawnio'); if (l) l.onclick = ev => { ev.preventDefault(); api.abrirAjuste('pawnio'); };
+}
 $('#a-fuente').addEventListener('change', () => guardar({ fuenteW: Math.max(0, Number($('#a-fuente').value) || 0) }));
 $('#a-anonimo').addEventListener('change', () => guardar({ anonimo: $('#a-anonimo').checked }));
 
@@ -239,6 +278,9 @@ function pintarPasos(pct) {
   const ol = $('#p-pasos');
   if (!ol.children.length) ol.innerHTML = estado.pasos.map(p => `<li><span class="marca-p">${ico('check')}</span>${esc(p.t)}</li>`).join('');
   let activoPuesto = false;
+  const hechos = estado.pasos.filter(p => pct >= p.h).length;
+  if (hechos > estado.pasosHechos) { for (let k = estado.pasosHechos; k < hechos; k++) setTimeout(() => sonar('paso', k), (k - estado.pasosHechos) * 120); }
+  estado.pasosHechos = Math.max(estado.pasosHechos, hechos);
   [...ol.children].forEach((li, i) => {
     const hecho = pct >= estado.pasos[i].h;
     li.classList.toggle('hecho', hecho);
@@ -252,7 +294,9 @@ api.onAnalisis(ev => {
   switch (ev.tipo) {
     case 'inicio':
       estado.pasos = ev.desdeJson ? PASOS_JSON : PASOS_ANALISIS;
+      estado.pasosHechos = 0;
       $('#p-pasos').innerHTML = '';
+      sonar('inicio'); setTimeout(() => sonar('iniciarSonar'), 900);
       mostrar('inicio'); modoProgreso(true);
       $('#btn-cancelar').disabled = false;
       $('#p-titulo').textContent = ev.desdeJson ? 'Generando el informe…' : ev.modoJuego ? 'Modo juego' : 'Analizando tu PC…';
@@ -274,7 +318,9 @@ api.onAnalisis(ev => {
       $('#p-aviso').textContent = ev.texto; $('#p-aviso').classList.remove('oculto');
       break;
     case 'fin':
+      sonar('pararSonar');
       pintarPasos(101); contar($('#p-pct'), 100, 300); $('#p-barra').style.width = '100%';
+      setTimeout(() => sonar('fin', !ev.informe || ev.informe.salud >= 65), 250);
       setTimeout(async () => {
         modoProgreso(false);
         await refrescarInformes();
@@ -286,9 +332,11 @@ api.onAnalisis(ev => {
       }, 700);
       break;
     case 'cancelado':
+      sonar('pararSonar'); sonar('cancelado');
       modoProgreso(false); toast('Análisis cancelado.');
       break;
     case 'error':
+      sonar('pararSonar'); sonar('error');
       modoProgreso(false);
       if (ev.codigo === 'uac') {
         modal({ titulo: 'Sin permiso de administrador', html: '<p>No se concedió el permiso. Puedes analizar igualmente sin permisos: faltarán la salud de los discos y algunos registros.</p>', confirmar: 'Analizar sin permisos' })
@@ -430,7 +478,7 @@ async function comparar() {
       <div class="tarjeta" style="--c:var(--crit)"><h3>Nuevos <span>${nuevos.length}</span></h3>${lista(nuevos)}</div>
       <div class="tarjeta" style="--c:var(--medio)"><h3>Siguen igual <span>${siguen.length}</span></h3>${lista(siguen)}</div></div>`;
   animarAnillos(res); escalonar(res.querySelector('.columnas-c'));
-  if (d >= 15 && resueltos.length) confeti(90);
+  if (d >= 15 && resueltos.length) { confeti(90); sonar('exito'); }
 }
 
 // ================================================================== monitor en vivo
@@ -473,13 +521,15 @@ function grafica(svg, series, max) {
   svg.innerHTML = rej + capas;
 }
 api.onMonitor(m => {
+  if (estado.vista === 'temperaturas') { actualizarTemperaturas(m); return; }
   if (estado.vista !== 'monitor') return;
   const e = $('#m-estado'); if (!e.classList.contains('on')) { e.className = 'en-vivo on'; e.innerHTML = '<i></i>En vivo'; }
   const ramPct = m.ramTotal ? m.ramUsada / m.ramTotal * 100 : null;
   setMedidor('cpu', m.cpu, 100, (m.cpuNom || '').replace(/\(R\)|\(TM\)|CPU|Processor|@.*$/g, '').replace(/\s+/g, ' ').trim() + (m.cpuPerf ? ` · ${m.cpuPerf} % vel.` : ''), colorCarga(m.cpu, 70, 90));
   setMedidor('ram', ramPct, 100, m.ramTotal ? `${(m.ramUsada / 1024).toFixed(1)} de ${(m.ramTotal / 1024).toFixed(1)} GB` : '', colorCarga(ramPct, 75, 90));
   setMedidor('gpu', m.gpu, 100, m.gpu == null ? 'No disponible en este equipo' : 'Uso del motor 3D', colorCarga(m.gpu, 80, 97));
-  setMedidor('temp', m.temp, 100, m.temp == null ? 'Abre LibreHardwareMonitor' : m.temp >= 90 ? '¡Muy caliente!' : m.temp >= 80 ? 'Caliente' : 'Normal', colorCarga(m.temp, 75, 88));
+  const tSt = window.Recomendaciones ? window.Recomendaciones.estadoTemp('cpu', m.cpuTemp, false) : { texto: '' };
+  setMedidor('temp', m.cpuTemp, 100, m.cpuTemp == null ? 'Ver Temperaturas para activarla' : `${tSt.texto}${m.cpuTempFuente === 'acpi' ? ' (aprox.)' : ''}${m.gpuTemp != null ? ' · GPU ' + Math.round(m.gpuTemp) + ' °C' : ''}`, colorCarga(m.cpuTemp, 75, 88));
   empujar(hist.cpu, m.cpu); empujar(hist.ram, ramPct); empujar(hist.gpu, m.gpu); empujar(hist.bajada, m.bajadaKB); empujar(hist.subida, m.subidaKB);
   const cs = getComputedStyle(document.documentElement);
   const c1 = cs.getPropertyValue('--c1').trim() || '#2563eb';
@@ -554,6 +604,7 @@ $('#btn-l-limpiar').onclick = async () => {
     <p>${d.Borrados.toLocaleString('es')} archivos eliminados${d.Omitidos ? ` · ${d.Omitidos.toLocaleString('es')} estaban en uso y se saltaron` : ''}.</p></div>`;
   contar($('#l-liberado'), d.Liberado, 1500, fmtBytes);
   $('#l-resultado').scrollIntoView({ behavior: animado() ? 'smooth' : 'auto', block: 'center' });
+  sonar('exito');
   if (d.Liberado > 50 * 1048576) confeti(110);
   estadoL.datos = null;
   setTimeout(() => { if (estado.vista === 'limpieza') medirLimpieza().then(() => {}); }, 2500);
@@ -583,6 +634,7 @@ $('#btn-d-probar').onclick = async () => {
     ${filas.map(([t, v, s]) => `<div class="fila-barra"><span class="nombre"><b>${t}</b><br><small class="sub">${s}</small></span><span class="pista"><i style="width:0%;--col:${d.Nivel === 'lento' ? 'var(--crit)' : 'var(--acc)'}" data-w="${esc2(v)}"></i></span><span class="dato"><b>${v == null ? '–' : v.toLocaleString('es')} MB/s</b></span></div>`).join('')}
     </div><p class="nota">Referencia de lectura secuencial: disco mecánico ~120 MB/s · SSD SATA ~550 MB/s · SSD NVMe 2.000 MB/s o más. En lectura aleatoria de 4 KB un disco mecánico da ~1 MB/s y un SSD 20 MB/s o más.</p></div>`;
   requestAnimationFrame(() => requestAnimationFrame(() => $$('#d-resultado [data-w]').forEach(i => { i.style.width = i.dataset.w + '%'; })));
+  sonar(d.Nivel === 'lento' ? 'alerta' : 'exito');
   if (d.Nivel === 'excelente') confeti(80);
 };
 
@@ -655,10 +707,247 @@ $('#btn-bv').onclick = async () => {
 
 (async function arrancar() {
   const d = await api.init();
-  estado.config = d.config; estado.paises = d.paises; estado.informes = d.informes; estado.version = d.version;
+  estado.config = d.config; estado.paises = d.paises; estado.informes = d.informes; estado.version = d.version; estado.equipo = d.equipo || '';
   $('#version').textContent = 'Versión ' + d.version;
   $('#a-carpeta').textContent = 'Los informes se guardan en: ' + d.carpetaInformes;
-  pintarOpciones(); pintarInicio(); pintarUpdate(d.update || {});
+  pintarOpciones(); pintarInicio(); pintarUpdate(d.update || {}); estadoSensoresAjustes();
   if (!d.config.bienvenida) $('#bienvenida').classList.remove('oculto');
   if (!d.motorOk) modal({ titulo: 'Falta el motor de diagnóstico', html: '<p>No se encontró DoctorPC.ps1. Reinstala Doctor PC.</p>', confirmar: 'Entendido', sinCancelar: true });
 })();
+
+// ================================================================== equipos con perfil (para Qué puedes hacer y Optimizar)
+function informesConPerfil() { return estado.informes.filter(i => i.tienePerfil); }
+function indiceLocal(lista) {
+  const eq = String(estado.equipo || '').toLowerCase();
+  const i = lista.findIndex(x => String(x.equipo || '').toLowerCase() === eq);
+  return i >= 0 ? i : 0;
+}
+function llenarSelectorEquipo(sel, lista, actual) {
+  sel.innerHTML = lista.map((x, i) => `<option value="${i}">${esc(x.equipo)}${String(x.equipo).toLowerCase() === String(estado.equipo).toLowerCase() ? ' (este PC)' : ''} · ${esc(fecha(x.fecha, x.creado))}</option>`).join('');
+  sel.value = String(actual);
+}
+function vacioAnalizar(cont, texto) {
+  cont.innerHTML = `<div class="vacio">${ico('pulso')}${esc(texto)}<div style="margin-top:14px"><button class="btn" id="btn-vacio-analizar">Analizar mi PC</button></div></div>`;
+  $('#btn-vacio-analizar').onclick = () => { mostrar('inicio'); lanzar(); };
+}
+async function perfilLocal() {
+  const l = informesConPerfil();
+  if (!l.length) return null;
+  const d = await datosDe(l[indiceLocal(l)]);
+  return d ? d.perfil : null;
+}
+
+// ================================================================== temperaturas
+const histTemp = [];
+let tempsPerfil = null, tempsEstadoCache = null;
+function tarjetaTemp(id, titulo, icono) {
+  const el = $('#' + id);
+  if (el.dataset.ok) return el;
+  el.dataset.ok = 1;
+  el.innerHTML = `<div class="tg"><svg viewBox="0 0 200 130">
+      <defs><linearGradient id="grad-${id}" x1="20" y1="0" x2="180" y2="0" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#38bdf8"/><stop offset=".35" stop-color="#22c55e"/><stop offset=".62" stop-color="#facc15"/><stop offset=".8" stop-color="#fb923c"/><stop offset="1" stop-color="#ef4444"/></linearGradient></defs>
+      <path class="pista" d="M20 105 A80 80 0 0 1 180 105"/>
+      <path class="arco" d="M20 105 A80 80 0 0 1 180 105" pathLength="100" style="stroke:url(#grad-${id});stroke-dasharray:100;stroke-dashoffset:100"/>
+      <g class="aguja" style="transform:rotate(-90deg)"><circle cx="100" cy="25" r="8" fill="var(--panel)" stroke="var(--tx)" stroke-width="3"/></g>
+    </svg><div class="num">–</div><div class="est"></div></div>
+    <div class="temp-info"><h3>${ico(icono)}${titulo}</h3><div class="modelo"></div>
+      <div class="stats-temp"><div><small>Mínima</small><b class="mn">–</b></div><div><small>Media</small><b class="pr">–</b></div><div><small>Máxima</small><b class="mx">–</b></div></div>
+      <div class="fuente"><i></i><span></span></div></div>`;
+  return el;
+}
+function pintarTemp(id, t, tipo, modelo, st, fuente, colorFuente) {
+  const el = tarjetaTemp(id, id === 'tt-cpu' ? 'Procesador' : 'Tarjeta gráfica', id === 'tt-cpu' ? 'cpu' : 'gpu');
+  const e = window.Recomendaciones.estadoTemp(tipo, t, tempsPerfil && tempsPerfil.EsPortatil);
+  const col = { frio: '#38bdf8', normal: 'var(--ok)', calido: 'var(--medio)', caliente: 'var(--alto)', peligro: 'var(--crit)', nd: 'var(--mut)' }[e.clave];
+  el.style.setProperty('--col', col);
+  el.classList.toggle('peligro', e.clave === 'peligro');
+  const k = t == null ? 0 : Math.max(0, Math.min(1, (t - 20) / 90));
+  el.querySelector('.arco').style.strokeDashoffset = 100 - k * 100;
+  el.querySelector('.aguja').style.transform = `rotate(${-90 + 180 * k}deg)`;
+  el.querySelector('.num').innerHTML = t == null ? '–' : `${Math.round(t)}<small>°C</small>`;
+  el.querySelector('.est').textContent = e.texto;
+  el.querySelector('.modelo').textContent = modelo || '';
+  el.querySelector('.mn').textContent = st ? Math.round(st.min) + '°' : '–';
+  el.querySelector('.pr').textContent = st ? Math.round(st.prom) + '°' : '–';
+  el.querySelector('.mx').textContent = st ? Math.round(st.max) + '°' : '–';
+  const f = el.querySelector('.fuente');
+  f.style.setProperty('--c', colorFuente);
+  f.querySelector('span').textContent = fuente;
+}
+async function prepararTemperaturas() {
+  tarjetaTemp('tt-cpu', 'Procesador', 'cpu'); tarjetaTemp('tt-gpu', 'Tarjeta gráfica', 'gpu');
+  const [e, perfil] = await Promise.all([api.tempsEstado(), perfilLocal()]);
+  tempsEstadoCache = e; tempsPerfil = perfil;
+  histTemp.length = 0;
+  (e.hist || []).forEach(h => histTemp.push(h));
+  pintarAlertas(e.alertas || []);
+  pintarConsejosFrio(e.sesion);
+  pintarActivarCpu(null);
+  dibujarGraficaTemp();
+  if (!histTemp.length) $('#t-estado').innerHTML = '<i></i>Conectando…';
+}
+function dibujarGraficaTemp() {
+  const map = v => v == null ? null : Math.max(0, Math.min(100, (v - 20) / 90 * 100));
+  const cs = getComputedStyle(document.documentElement);
+  grafica($('#t-grafica'), [{ datos: histTemp.slice(-120).map(h => map(h.gpu)), color: '#10b981' }, { datos: histTemp.slice(-120).map(h => map(h.cpu)), color: cs.getPropertyValue('--c1').trim() || '#2563eb' }], 100);
+}
+function actualizarTemperaturas(m) {
+  const e = $('#t-estado'); if (!e.classList.contains('on')) { e.className = 'en-vivo on'; e.innerHTML = '<i></i>En vivo'; }
+  const ses = m.sesion || {};
+  const fuenteCpu = { sensor: ['Sensor del procesador (exacto)', 'var(--ok)'], lhm: ['LibreHardwareMonitor', 'var(--ok)'], acpi: ['Zona térmica ACPI (aproximada)', 'var(--medio)'] }[m.cpuTempFuente] || ['Sin sensor: actívalo abajo', 'var(--mut)'];
+  pintarTemp('tt-cpu', m.cpuTemp, 'cpu', (tempsPerfil && tempsPerfil.Cpu || m.cpuNom || '').replace(/\((R|TM)\)/g, ''), m.cpuTempFuente === 'acpi' ? null : ses.cpu, fuenteCpu[0], fuenteCpu[1]);
+  pintarTemp('tt-gpu', m.gpuTemp, 'gpu', m.gpuNombre || (tempsPerfil && tempsPerfil.Gpu) || '', ses.gpu, m.gpuTemp != null ? 'Sensor de la gráfica' : 'Sin sensor de la gráfica', m.gpuTemp != null ? 'var(--ok)' : 'var(--mut)');
+  histTemp.push({ t: Date.now(), cpu: m.cpuTemp, gpu: m.gpuTemp }); if (histTemp.length > 300) histTemp.shift();
+  dibujarGraficaTemp();
+  const fila = (a, b) => b == null || b === '' ? '' : `<div><span>${a}</span><b>${b}</b></div>`;
+  const vent = (m.ventiladores || []).slice(0, 4).map(v => fila(esc(v.nombre), Math.round(v.rpm) + ' rpm')).join('');
+  $('#t-detalles').innerHTML = [
+    fila('Punto caliente GPU', m.gpuHot != null ? Math.round(m.gpuHot) + ' °C' : null),
+    fila('Memoria de la GPU', m.gpuMemTemp != null ? Math.round(m.gpuMemTemp) + ' °C' : null),
+    fila('Uso del procesador', m.cpu != null ? Math.round(m.cpu) + ' %' : null),
+    fila('Uso de la gráfica', m.gpu != null ? Math.round(m.gpu) + ' %' : null),
+    fila('Potencia CPU', m.cpuPot != null ? Math.round(m.cpuPot) + ' W' : null),
+    fila('Potencia GPU', m.gpuPot != null ? Math.round(m.gpuPot) + ' W' : null),
+    fila('Reloj CPU', m.cpuReloj != null ? Math.round(m.cpuReloj) + ' MHz' : null),
+    fila('Reloj GPU', m.gpuReloj != null ? Math.round(m.gpuReloj) + ' MHz' : null),
+    fila('Ventilador GPU', m.gpuVentRpm != null ? Math.round(m.gpuVentRpm) + ' rpm' + (m.gpuVentPct != null ? ` (${Math.round(m.gpuVentPct)} %)` : '') : null),
+    vent
+  ].join('') || '<p class="sub">Activa los sensores avanzados para ver más datos.</p>';
+  pintarActivarCpu(m);
+  if (m.t % 15 === 0) pintarConsejosFrio(ses);
+}
+function pintarActivarCpu(m) {
+  const caja = $('#t-activar');
+  const e = tempsEstadoCache || {};
+  const sinCpu = m ? (m.cpuTemp == null || m.cpuTempFuente === 'acpi') : true;
+  if (!sinCpu || (m && !m.sensores)) { caja.classList.add('oculto'); return; }
+  if (!e.hayLector) { caja.classList.add('oculto'); return; }
+  const c = estado.config;
+  const paso = (ok, txt, boton) => `<li>${ok ? '✅' : '⬜'} ${txt} ${!ok && boton ? boton : ''}</li>`;
+  const html = `<div class="u-icono">${ico('temp')}</div><div style="flex:1"><h3>Activa la temperatura del procesador</h3>
+    <p class="sub" style="margin:2px 0 6px">Windows no deja leer los sensores del procesador sin un controlador. Doctor PC usa PawnIO: gratuito, firmado y de código abierto (lo usan LibreHardwareMonitor y FanControl).</p>
+    <ol>${paso(e.pawnio, 'Instala PawnIO.', '<button class="btn secundario" id="btn-pawnio">Descargar PawnIO</button>')}
+      ${paso(!!c.sensoresAvanzados, 'Activa los sensores avanzados (Windows pedirá permiso de administrador).', '<button class="btn" id="btn-activar-sens">Activar</button>')}</ol>
+    ${e.pawnio && c.sensoresAvanzados ? '<p class="nota">Si sigue sin aparecer, cierra Doctor PC del todo (icono de la bandeja > Salir) y vuelve a abrirlo aceptando el permiso.</p>' : ''}</div>`;
+  if (caja.dataset.h !== html) { caja.innerHTML = html; caja.dataset.h = html; }
+  caja.classList.remove('oculto');
+  const b1 = $('#btn-pawnio'); if (b1) b1.onclick = () => api.abrirAjuste('pawnio');
+  const b2 = $('#btn-activar-sens'); if (b2) b2.onclick = async () => { await guardar({ sensoresAvanzados: true }); $('#a-sensores').checked = true; toast('Acepta el permiso de administrador para leer el procesador.', 5000); };
+}
+function pintarAlertas(lista) {
+  const c = estado.config;
+  $('#t-alertas').innerHTML = `<p class="sub" style="margin-top:0">${c.alertas === false ? 'Las alertas están desactivadas.' : `Te avisamos si el procesador pasa de <b>${c.umbralCpu || 90} °C</b> o la gráfica de <b>${c.umbralGpu || 85} °C</b> durante unos segundos${c.bandeja !== false ? ', aunque Doctor PC esté en la bandeja' : ''}.`}</p>` +
+    (lista.length ? lista.map(a => `<div class="alerta-fila">${ico('alerta')}<span><b>${a.comp === 'cpu' ? 'Procesador' : 'Gráfica'} a ${a.temp} °C</b> (límite ${a.umbral} °C)${a.juego ? ' jugando ' + esc(a.juego) : ''}</span><span class="sub" style="margin:0 0 0 auto">${new Date(a.fecha).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span></div>`).join('') : '<p class="sub">Sin alertas en esta sesión. 👍</p>');
+}
+function pintarConsejosFrio(sesion) {
+  if (!window.Recomendaciones) return;
+  const lista = window.Recomendaciones.refrigeracion(tempsPerfil || {}, sesion || {});
+  const cont = $('#t-consejos');
+  const html = lista.map(x => `<div class="item consejo ${x.relevante ? 'relevante' : ''}"><div class="cabeza"><div class="ic-item">${ico(x.relevante ? 'alerta' : 'viento')}</div><div class="cuerpo">
+      <b>${esc(x.titulo)}</b>${x.relevante ? '<span class="etq sugerida">Para ti</span>' : ''}<div class="meta">${esc(x.texto)}</div>${x.motivo ? `<span class="motivo">${esc(x.motivo)}</span>` : ''}
+      ${x.pasos.length ? `<ol>${x.pasos.map(p => `<li>${esc(p)}</li>`).join('')}</ol>` : ''}</div></div></div>`).join('');
+  if (cont.dataset.h !== html) { cont.innerHTML = html; cont.dataset.h = html; escalonar(cont); }
+}
+$('#btn-t-ajustes').onclick = () => mostrar('ajustes');
+
+// Alertas desde el proceso principal
+api.onAlerta(a => {
+  sonar('alerta');
+  $('#nav-alerta').classList.remove('oculto');
+  setTimeout(() => $('#nav-alerta').classList.add('oculto'), 60000);
+  const html = `${ico('alerta')}<div><b>Tu ${a.nombre} está a ${a.temp} °C</b>Supera tu límite de ${a.umbral} °C${a.juego ? ' mientras juegas ' + esc(a.juego) : ''}.</div><button class="btn" id="btn-ver-alerta">Qué hacer</button>`;
+  let g = $('#alerta-global');
+  if (!g) { g = document.createElement('div'); g.id = 'alerta-global'; g.className = 'alerta-global'; document.body.appendChild(g); }
+  g.innerHTML = `<div class="banner-alerta">${html}</div>`;
+  $('#btn-ver-alerta').onclick = () => { g.innerHTML = ''; mostrar('temperaturas'); };
+  clearTimeout(api._tAlerta); api._tAlerta = setTimeout(() => { g.innerHTML = ''; }, 15000);
+  if (estado.vista === 'temperaturas') api.tempsEstado().then(e => pintarAlertas(e.alertas || []));
+});
+api.onIr(v => mostrar(v));
+api.onConfig(c => { estado.config = c; pintarOpciones(); });
+api.onJuego(j => { if (j.activo && estado.config.overlay !== 'off') toast(`Juego detectado: ${j.n}. Overlay activo (Ctrl + Mayús + O para ocultarlo).`, 4500); });
+
+// ================================================================== qué puedes hacer
+let capFiltro = 'todo';
+const NIVEL_TXT = { excelente: 'Excelente', bien: 'Bien', limitado: 'Con límites', no: 'No recomendable' };
+const CAT_TXT = { Juegos: 'Juegos', Crear: 'Crear', IA: 'IA', Productividad: 'Productividad', Entretenimiento: 'Ocio' };
+async function pintarCapacidades(indice) {
+  const lista = informesConPerfil(), cont = $('#cap-lista');
+  if (!lista.length) { $('#cap-chips').innerHTML = ''; $('#cap-anillo').innerHTML = ''; vacioAnalizar(cont, 'Analiza tu PC (o abre el .json de un cliente) para descubrir todo lo que puede hacer.'); return; }
+  const idx = indice != null ? indice : indiceLocal(lista);
+  llenarSelectorEquipo($('#cap-equipo'), lista, idx);
+  const d = await datosDe(lista[idx]);
+  const p = d && d.perfil;
+  if (!p) { vacioAnalizar(cont, 'Este informe es de una versión anterior. Vuelve a analizar para verlo.'); return; }
+  const caps = window.Capacidades.capacidades(p);
+  const pct = window.Capacidades.versatilidad(caps);
+  const limpio = t => String(t || '').replace(/\((R|TM)\)/gi, '').replace(/\s+CPU\s+@.*$/i, '').replace(/\s*(Six|Eight|Quad)-Core Processor/i, '').trim();
+  $('#cap-chips').innerHTML = [['cpu', limpio(p.Cpu)], ['gpu', limpio(p.Gpu) + (p.VramGB && !p.GpuIntegrada ? ` · ${p.VramGB} GB` : '')], ['ram', `${Math.round(p.RamGB)} GB ${p.RamTipo || ''}`], ['disco', p.SistemaEnHDD ? 'Windows en HDD' : 'Windows en SSD']].map(([i, t]) => `<span>${ico(i)}${esc(t)}</span>`).join('');
+  $('#cap-anillo').innerHTML = anillo(pct, 120) + '<small>Versatilidad</small>';
+  animarAnillos($('#cap-anillo'));
+  const vis = caps.filter(x => capFiltro === 'todo' || x.cat === capFiltro);
+  cont.innerHTML = vis.map(x => `<div class="cap cat-${x.cat} ${x.nivel}">
+      <div class="cab-cap"><div class="burbuja-ic">${ico(x.icono)}</div><span class="nivel ${x.nivel}">${NIVEL_TXT[x.nivel]}</span></div>
+      <h3>${esc(x.titulo)}</h3><p>${esc(x.texto)}</p>${x.extra ? `<div class="extra">${esc(x.extra)}</div>` : ''}${x.nota ? `<div class="extra">${esc(x.nota)}</div>` : ''}
+      ${x.apps.length ? `<div class="apps">${x.apps.map(a => `<span>${esc(a)}</span>`).join('')}</div>` : ''}</div>`).join('') || '<div class="vacio">Nada en esta categoría.</div>';
+  escalonar(cont);
+}
+$('#cap-equipo').onchange = () => pintarCapacidades(Number($('#cap-equipo').value));
+$$('#cap-filtros button').forEach(b => b.onclick = () => {
+  capFiltro = b.dataset.v; $$('#cap-filtros button').forEach(x => x.classList.toggle('activo', x === b)); sonar('clic');
+  pintarCapacidades(Number($('#cap-equipo').value) || undefined);
+});
+
+// ================================================================== optimizar juegos
+const claveHecho = (eq, id) => `dpc-op-${eq}-${id}`;
+function leerHecho(eq, id) { try { return localStorage.getItem(claveHecho(eq, id)) === '1'; } catch (e) { return false; } }
+function guardarHecho(eq, id, v) { try { if (v) localStorage.setItem(claveHecho(eq, id), '1'); else localStorage.removeItem(claveHecho(eq, id)); } catch (e) { /* sin almacenamiento */ } }
+async function pintarOptimizar(indice) {
+  const lista = informesConPerfil();
+  const cab = $('#op-cabeza'), secs = $('#op-secciones'), js = $('#op-juegos');
+  if (!lista.length) { cab.innerHTML = ''; js.innerHTML = ''; vacioAnalizar(secs, 'Analiza tu PC (mejor en modo juego) para recibir recomendaciones a medida.'); return; }
+  const idx = indice != null ? indice : indiceLocal(lista);
+  llenarSelectorEquipo($('#op-equipo'), lista, idx);
+  const inf = lista[idx];
+  const d = await datosDe(inf);
+  if (!d || !d.perfil) { cab.innerHTML = ''; js.innerHTML = ''; vacioAnalizar(secs, 'Este informe es de una versión anterior. Vuelve a analizar para verlo.'); return; }
+  const r = window.Recomendaciones.recomendaciones({ perfil: d.perfil, ajustes: d.ajustes, idsHallazgos: d.idsHallazgos, juegosDetalle: d.juegosDetalle });
+  const eq = inf.equipo;
+  r.secciones.forEach(s => s.items.forEach(i => { if (i.estado === 'hacer' && leerHecho(eq, i.id)) { i.estado = 'ok'; i.marcado = true; } }));
+  const todos = r.secciones.flatMap(s => s.items), ok = todos.filter(i => i.estado === 'ok').length, pend = todos.filter(i => i.estado === 'hacer').length;
+  const pct = ok + pend ? Math.round(ok / (ok + pend) * 100) : 100;
+  const b = r.balance, mx = Math.max(b.cpu || 0, b.gpu || 0, 1);
+  const bloq = (d.bloqueadas || []).find(x => /procesador/i.test(x.nombre));
+  cab.innerHTML = `<div class="tarjeta op-cabeza"><div>${anillo(pct, 150)}<small class="pie">${ok} de ${ok + pend} ajustes aplicados</small></div>
+    <div class="balance ${b.tipo}"><h3>${esc(b.titulo)}</h3><p class="sub" style="margin:0">${esc(b.texto)}</p>
+      <div class="duelo-barras">
+        <div class="fila-barra"><span class="nombre">Procesador</span><span class="pista"><i style="width:${(b.cpu || 0) / mx * 100}%;--col:${b.tipo === 'cpu' ? 'var(--alto)' : 'var(--acc)'}"></i></span><span class="dato">${Math.round(b.cpu || 0)} pts</span></div>
+        <div class="fila-barra"><span class="nombre">Gráfica</span><span class="pista"><i style="width:${(b.gpu || 0) / mx * 100}%;--col:${b.tipo === 'gpu' ? 'var(--alto)' : 'var(--acc)'}"></i></span><span class="dato">${Math.round(b.gpu || 0)} pts</span></div>
+        <span class="leyenda-duelo">Potencia relativa para juegos (puntos de Doctor PC)</span>
+      </div>
+      ${bloq && b.tipo === 'cpu' ? `<p class="nota">${ico('info')} ${esc(bloq.motivo)}</p>` : ''}</div></div>`;
+  animarAnillos(cab);
+  const EST = { hacer: ['Pendiente', ''], ok: ['Hecho', 'ok'], info: ['Para saber', ''], nd: ['No disponible', ''] };
+  secs.innerHTML = r.secciones.map(s => `<div class="seccion-op"><h2>${ico(s.icono)}${esc(s.titulo)}</h2><div class="lista">${s.items.map(i => `
+    <div class="item rec ${i.estado}" data-id="${i.id}"><div class="cabeza">
+      <span class="marca-rec" title="${i.estado === 'hacer' || i.marcado ? 'Marcar como hecho' : ''}">${ico('check')}</span>
+      <div class="cuerpo"><b>${esc(i.titulo)}</b>
+        <div class="chips"><span class="imp ${i.impacto}">Impacto ${i.impacto}</span><span class="est ${EST[i.estado][1]}">${EST[i.estado][0]}${i.marcado ? ' (marcado por ti)' : ''}</span></div>
+        <div class="meta">${esc(i.texto)}</div>
+        ${i.pasos.length ? `<details><summary>Cómo hacerlo</summary><ol>${i.pasos.map(p => `<li>${esc(p)}</li>`).join('')}</ol></details>` : ''}
+        ${i.accion ? `<div class="acciones-rec"><button class="btn secundario" data-accion="${esc(i.accion.ajuste || '')}" data-vista="${esc(i.accion.vista || '')}">${esc(i.accion.texto)}</button></div>` : ''}
+      </div></div></div>`).join('')}</div></div>`).join('');
+  secs.querySelectorAll('.lista').forEach(escalonar);
+  secs.querySelectorAll('[data-accion]').forEach(bt => bt.onclick = () => { if (bt.dataset.vista) mostrar(bt.dataset.vista); else if (bt.dataset.accion) api.abrirAjuste(bt.dataset.accion); });
+  secs.querySelectorAll('.rec').forEach(el => {
+    const it = todos.find(x => x.id === el.dataset.id);
+    if (!it || !(it.estado === 'hacer' || it.marcado)) return;
+    el.querySelector('.marca-rec').onclick = () => { guardarHecho(eq, it.id, !it.marcado); if (!it.marcado) sonar('paso', 4); pintarOptimizar(idx); };
+  });
+  js.innerHTML = r.juegos.length ? r.juegos.map(j => `<div class="juego-op"><div class="cab-j"><b>${esc(j.nombre)}</b><span class="calidad ${j.nivel}">${esc(j.calidad)}</span></div>
+      ${j.consejos.length ? `<ul>${j.consejos.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : '<p class="sub" style="margin:0">Juega en la calidad indicada a 1080p.</p>'}</div>`).join('')
+    : '<div class="vacio">No se detectaron juegos del catálogo en este equipo.</div>';
+  escalonar(js);
+}
+$('#op-equipo').onchange = () => pintarOptimizar(Number($('#op-equipo').value));

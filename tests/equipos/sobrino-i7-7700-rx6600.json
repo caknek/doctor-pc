@@ -1,0 +1,944 @@
+{
+ "Datos": {
+  "Version": "0.1.0",
+  "Fecha": "2026-10-27T10:30:00",
+  "Equipo": "PC-SOBRINO",
+  "Admin": true,
+  "Sistema": {
+   "Equipo": "PC-SOBRINO",
+   "Fabricante": "System manufacturer",
+   "Modelo": "System Product Name",
+   "EsPortatil": false,
+   "Windows": "Microsoft Windows 11 Home",
+   "VersionWindows": "24H2",
+   "Build": 26100,
+   "Arquitectura": "64 bits",
+   "Instalado": "2019-03-14",
+   "UptimeDias": 2.1,
+   "InicioRapido": 1,
+   "ReinicioPendiente": false,
+   "PlanEnergiaGuid": "381b4222-f694-41f0-9685-ff5bb260df2e",
+   "PlanEnergia": "Equilibrado",
+   "Placa": "ASUSTeK COMPUTER INC. PRIME B250M-A",
+   "BIOS": "A29",
+   "FechaBIOS": "2017-08-15",
+   "Bateria": null,
+   "Antivirus": [
+    {
+     "Nombre": "Windows Defender",
+     "Activo": true
+    }
+   ],
+   "PaginacionMB": 5120,
+   "PaginacionPicoMB": 2210,
+   "PaginacionAuto": true,
+   "UnidadSistema": "C:"
+  },
+  "Cpu": {
+   "Nombre": "Intel(R) Core(TM) i7-7700 CPU @ 3.60GHz",
+   "Fabricante": "GenuineIntel",
+   "Nucleos": 4,
+   "Hilos": 8,
+   "MHzMax": 3600,
+   "MHzActual": 3201,
+   "Socket": "LGA1151",
+   "L3KB": 6144
+  },
+  "Gpus": [
+   {
+    "Nombre": "AMD Radeon RX 6600",
+    "Fabricante": "AMD",
+    "VramGB": 8,
+    "Driver": "32.0.21013.1000",
+    "FechaDriver": "2026-07-10",
+    "Resolucion": "1920x1080",
+    "Hz": 75,
+    "Estado": "OK",
+    "Virtual": false
+   },
+   {
+    "Nombre": "Intel(R) HD Graphics 630",
+    "Fabricante": "Intel",
+    "VramGB": 1,
+    "Driver": "31.0.101.2111",
+    "FechaDriver": "2022-07-12",
+    "Resolucion": "",
+    "Hz": null,
+    "Estado": "OK",
+    "Virtual": false
+   }
+  ],
+  "Ram": {
+   "TotalGB": 15.9,
+   "InstaladaGB": 16,
+   "Ranuras": 4,
+   "MaximoGB": 64,
+   "Modulos": [
+    {
+     "CapacidadGB": 8,
+     "Tipo": "DDR4",
+     "Formato": "DIMM",
+     "MHz": 2400,
+     "MHzActual": 2133,
+     "Ranura": "ChannelA-DIMM1",
+     "Banco": "BANK 0",
+     "Fabricante": "Kingston",
+     "Modelo": "KHX2400C15/8G"
+    },
+    {
+     "CapacidadGB": 8,
+     "Tipo": "DDR4",
+     "Formato": "DIMM",
+     "MHz": 2400,
+     "MHzActual": 2133,
+     "Ranura": "ChannelB-DIMM1",
+     "Banco": "BANK 2",
+     "Fabricante": "Kingston",
+     "Modelo": "KHX2400C15/8G"
+    }
+   ]
+  },
+  "Discos": [
+   {
+    "Numero": 0,
+    "Modelo": "Kingston A400 480GB",
+    "TamanoGB": 447,
+    "Tipo": "SSD SATA",
+    "Bus": "SATA",
+    "EsSSD": true,
+    "EsHDD": false,
+    "Externo": false,
+    "Salud": "Healthy",
+    "Estado": "OK",
+    "TempC": 35,
+    "TempMaxC": 48,
+    "DesgastePct": 8,
+    "Horas": 9000,
+    "ErroresLectura": 0,
+    "Volumenes": [
+     {
+      "Letra": "C:",
+      "TamanoGB": 446,
+      "LibreGB": 120,
+      "Etiqueta": ""
+     }
+    ]
+   },
+   {
+    "Numero": 1,
+    "Modelo": "WDC WD10EZEX-00BBHA0",
+    "TamanoGB": 931.5,
+    "Tipo": "HDD",
+    "Bus": "SATA",
+    "EsSSD": false,
+    "EsHDD": true,
+    "Externo": false,
+    "Salud": "Healthy",
+    "Estado": "OK",
+    "TempC": 38,
+    "TempMaxC": 46,
+    "DesgastePct": null,
+    "Horas": 30000,
+    "ErroresLectura": 0,
+    "Volumenes": [
+     {
+      "Letra": "D:",
+      "TamanoGB": 931,
+      "LibreGB": 300,
+      "Etiqueta": "Juegos"
+     }
+    ]
+   }
+  ],
+  "Volumenes": [
+   {
+    "Letra": "C:",
+    "TamanoGB": 446,
+    "LibreGB": 120,
+    "Sistema": true
+   },
+   {
+    "Letra": "D:",
+    "TamanoGB": 931,
+    "LibreGB": 300,
+    "Sistema": false
+   }
+  ],
+  "FalloPredicho": [],
+  "Temperaturas": [
+   {
+    "Fuente": "Sensores",
+    "Componente": "CPU",
+    "Sensor": "Media / máxima durante el juego",
+    "Valor": 81.5,
+    "Max": 88
+   },
+   {
+    "Fuente": "Sensores",
+    "Componente": "GPU",
+    "Sensor": "Media / máxima durante el juego",
+    "Valor": 71.2,
+    "Max": 76
+   },
+   {
+    "Fuente": "Sensores",
+    "Componente": "GPU",
+    "Sensor": "GPU Hot Spot (máxima durante el juego)",
+    "Valor": 97,
+    "Max": 97
+   }
+  ],
+  "Eventos": {
+   "Dias": 30,
+   "ApagadosInesperados": 0,
+   "FechasApagados": [],
+   "Pantallazos": [],
+   "ReiniciosDriverVideo": 0,
+   "ErroresDisco": 0,
+   "DiscosConError": [],
+   "ErroresNtfs": 0,
+   "ReiniciosControladorDisco": 0,
+   "MemoriaVirtualBaja": 0,
+   "ErroresWhea": 0,
+   "WheaFatales": 0,
+   "CierresApps": [],
+   "BloqueosApps": []
+  },
+  "Dispositivos": [],
+  "Inicio": [
+   {
+    "Nombre": "OneDrive",
+    "Comando": "\"C:\\Users\\<usuario>\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Steam",
+    "Comando": "\"C:\\Program Files (x86)\\Steam\\steam.exe\" -silent",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "EpicGamesLauncher",
+    "Comando": "\"C:\\Program Files (x86)\\Epic Games\\Launcher\\Portal\\Binaries\\Win32\\EpicGamesLauncher.exe\" -silent",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Discord",
+    "Comando": "Update.exe --processStart Discord.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "RiotClient",
+    "Comando": "RiotClientServices.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "Spotify",
+    "Comando": "Spotify.exe /background",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "AdobeGCInvoker",
+    "Comando": "AdobeGCClient.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "iTunesHelper",
+    "Comando": "iTunesHelper.exe",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   },
+   {
+    "Nombre": "CCleaner",
+    "Comando": "CCleaner64.exe /MONITOR",
+    "Ubicacion": "HKU\\...\\Run",
+    "Activo": true
+   }
+  ],
+  "Juegos": [
+   {
+    "Nombre": "Fortnite",
+    "Tienda": "Epic Games",
+    "AppId": null,
+    "Ruta": "C:\\Program Files\\Epic Games\\Fortnite",
+    "Exe": "FortniteLauncher.exe",
+    "TamanoGB": 38,
+    "Unidad": "C:"
+   },
+   {
+    "Nombre": "Grand Theft Auto V Enhanced",
+    "Tienda": "Steam",
+    "AppId": 3240220,
+    "Ruta": "D:\\SteamLibrary\\steamapps\\common\\Grand Theft Auto V Enhanced",
+    "Exe": "",
+    "TamanoGB": 105,
+    "Unidad": "D:"
+   },
+   {
+    "Nombre": "Cyberpunk 2077",
+    "Tienda": "Steam",
+    "AppId": 1091500,
+    "Ruta": "D:\\SteamLibrary\\steamapps\\common\\Cyberpunk 2077",
+    "Exe": "",
+    "TamanoGB": 70,
+    "Unidad": "D:"
+   },
+   {
+    "Nombre": "VALORANT",
+    "Tienda": "Riot",
+    "AppId": null,
+    "Ruta": "C:\\Riot Games\\VALORANT",
+    "Exe": "VALORANT.exe",
+    "TamanoGB": 42,
+    "Unidad": "C:"
+   },
+   {
+    "Nombre": "Counter-Strike 2",
+    "Tienda": "Steam",
+    "AppId": 730,
+    "Ruta": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive",
+    "Exe": "",
+    "TamanoGB": 36,
+    "Unidad": "C:"
+   }
+  ],
+  "Muestreo": {
+   "Segundos": 120,
+   "ModoJuego": true,
+   "Muestras": [
+    {
+     "T": 0,
+     "Cpu": 93.5,
+     "NucleoMax": 99.0,
+     "CpuPerf": 101,
+     "RamLibreMB": 5165,
+     "Commit": 70,
+     "Paginas": 38,
+     "Gpu": 62.5,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 94.2,
+       "LatMs": 1.0,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 2,
+     "Cpu": 93.8,
+     "NucleoMax": 99.6,
+     "CpuPerf": 96,
+     "RamLibreMB": 4680,
+     "Commit": 63,
+     "Paginas": 29,
+     "Gpu": 70.7,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 95.2,
+       "LatMs": 0.2,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 4,
+     "Cpu": 88.6,
+     "NucleoMax": 97.1,
+     "CpuPerf": 101,
+     "RamLibreMB": 4984,
+     "Commit": 66,
+     "Paginas": 15,
+     "Gpu": 74.2,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 90.6,
+       "LatMs": 0.7,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 6,
+     "Cpu": 91.3,
+     "NucleoMax": 96.5,
+     "CpuPerf": 102,
+     "RamLibreMB": 4205,
+     "Commit": 63,
+     "Paginas": 54,
+     "Gpu": 65.4,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 98.8,
+       "LatMs": 0.9,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 8,
+     "Cpu": 89.5,
+     "NucleoMax": 99.8,
+     "CpuPerf": 99,
+     "RamLibreMB": 4894,
+     "Commit": 70,
+     "Paginas": 18,
+     "Gpu": 64.9,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 98.7,
+       "LatMs": 0.4,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 10,
+     "Cpu": 97.6,
+     "NucleoMax": 97.5,
+     "CpuPerf": 95,
+     "RamLibreMB": 4624,
+     "Commit": 62,
+     "Paginas": 14,
+     "Gpu": 66.2,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 93.0,
+       "LatMs": 0.9,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 12,
+     "Cpu": 93.0,
+     "NucleoMax": 98.4,
+     "CpuPerf": 100,
+     "RamLibreMB": 4267,
+     "Commit": 64,
+     "Paginas": 27,
+     "Gpu": 75.1,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 94.3,
+       "LatMs": 0.5,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 14,
+     "Cpu": 91.8,
+     "NucleoMax": 98.8,
+     "CpuPerf": 95,
+     "RamLibreMB": 5198,
+     "Commit": 60,
+     "Paginas": 52,
+     "Gpu": 67.7,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 93.6,
+       "LatMs": 0.6,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 16,
+     "Cpu": 91.0,
+     "NucleoMax": 97.5,
+     "CpuPerf": 101,
+     "RamLibreMB": 4663,
+     "Commit": 60,
+     "Paginas": 50,
+     "Gpu": 64.9,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 98.6,
+       "LatMs": 0.4,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 18,
+     "Cpu": 95.1,
+     "NucleoMax": 99.7,
+     "CpuPerf": 102,
+     "RamLibreMB": 4552,
+     "Commit": 68,
+     "Paginas": 27,
+     "Gpu": 76.3,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 92.3,
+       "LatMs": 0.6,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 20,
+     "Cpu": 93.1,
+     "NucleoMax": 99.1,
+     "CpuPerf": 98,
+     "RamLibreMB": 4502,
+     "Commit": 60,
+     "Paginas": 32,
+     "Gpu": 77.1,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 90.8,
+       "LatMs": 0.5,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 22,
+     "Cpu": 93.3,
+     "NucleoMax": 99.7,
+     "CpuPerf": 97,
+     "RamLibreMB": 5146,
+     "Commit": 68,
+     "Paginas": 10,
+     "Gpu": 67.0,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 92.9,
+       "LatMs": 0.3,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 24,
+     "Cpu": 86.9,
+     "NucleoMax": 96.6,
+     "CpuPerf": 100,
+     "RamLibreMB": 4695,
+     "Commit": 62,
+     "Paginas": 51,
+     "Gpu": 62.8,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 98.9,
+       "LatMs": 0.6,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 26,
+     "Cpu": 90.9,
+     "NucleoMax": 96.9,
+     "CpuPerf": 99,
+     "RamLibreMB": 5046,
+     "Commit": 64,
+     "Paginas": 34,
+     "Gpu": 72.4,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 91.3,
+       "LatMs": 1.0,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 28,
+     "Cpu": 93.7,
+     "NucleoMax": 99.2,
+     "CpuPerf": 97,
+     "RamLibreMB": 4412,
+     "Commit": 62,
+     "Paginas": 51,
+     "Gpu": 71.0,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 91.2,
+       "LatMs": 0.9,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 30,
+     "Cpu": 91.0,
+     "NucleoMax": 96.7,
+     "CpuPerf": 98,
+     "RamLibreMB": 4260,
+     "Commit": 66,
+     "Paginas": 23,
+     "Gpu": 64.3,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 98.3,
+       "LatMs": 0.7,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 32,
+     "Cpu": 88.0,
+     "NucleoMax": 98.1,
+     "CpuPerf": 102,
+     "RamLibreMB": 4905,
+     "Commit": 65,
+     "Paginas": 35,
+     "Gpu": 66.4,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 94.2,
+       "LatMs": 0.9,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 34,
+     "Cpu": 87.4,
+     "NucleoMax": 99.3,
+     "CpuPerf": 99,
+     "RamLibreMB": 4383,
+     "Commit": 70,
+     "Paginas": 36,
+     "Gpu": 75.9,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 91.6,
+       "LatMs": 0.6,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 36,
+     "Cpu": 92.2,
+     "NucleoMax": 98.2,
+     "CpuPerf": 99,
+     "RamLibreMB": 4264,
+     "Commit": 65,
+     "Paginas": 49,
+     "Gpu": 71.4,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 90.3,
+       "LatMs": 0.4,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 38,
+     "Cpu": 92.7,
+     "NucleoMax": 98.7,
+     "CpuPerf": 101,
+     "RamLibreMB": 4471,
+     "Commit": 64,
+     "Paginas": 26,
+     "Gpu": 72.4,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 95.2,
+       "LatMs": 0.2,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 40,
+     "Cpu": 92.6,
+     "NucleoMax": 97.0,
+     "CpuPerf": 100,
+     "RamLibreMB": 4674,
+     "Commit": 64,
+     "Paginas": 57,
+     "Gpu": 70.0,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 96.1,
+       "LatMs": 0.5,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 42,
+     "Cpu": 89.3,
+     "NucleoMax": 97.4,
+     "CpuPerf": 102,
+     "RamLibreMB": 4618,
+     "Commit": 65,
+     "Paginas": 58,
+     "Gpu": 64.8,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 97.8,
+       "LatMs": 0.6,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 44,
+     "Cpu": 90.4,
+     "NucleoMax": 97.3,
+     "CpuPerf": 96,
+     "RamLibreMB": 4370,
+     "Commit": 63,
+     "Paginas": 58,
+     "Gpu": 67.8,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 97.7,
+       "LatMs": 0.4,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 46,
+     "Cpu": 86.9,
+     "NucleoMax": 98.7,
+     "CpuPerf": 98,
+     "RamLibreMB": 4831,
+     "Commit": 69,
+     "Paginas": 38,
+     "Gpu": 72.6,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 93.8,
+       "LatMs": 0.7,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 48,
+     "Cpu": 95.3,
+     "NucleoMax": 98.5,
+     "CpuPerf": 100,
+     "RamLibreMB": 4228,
+     "Commit": 63,
+     "Paginas": 15,
+     "Gpu": 71.4,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 95.6,
+       "LatMs": 0.3,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 50,
+     "Cpu": 95.1,
+     "NucleoMax": 96.7,
+     "CpuPerf": 100,
+     "RamLibreMB": 4682,
+     "Commit": 63,
+     "Paginas": 15,
+     "Gpu": 62.9,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 91.2,
+       "LatMs": 0.5,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 52,
+     "Cpu": 88.2,
+     "NucleoMax": 96.8,
+     "CpuPerf": 95,
+     "RamLibreMB": 4676,
+     "Commit": 65,
+     "Paginas": 29,
+     "Gpu": 72.6,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 90.6,
+       "LatMs": 0.4,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 54,
+     "Cpu": 94.6,
+     "NucleoMax": 97.5,
+     "CpuPerf": 97,
+     "RamLibreMB": 5174,
+     "Commit": 64,
+     "Paginas": 59,
+     "Gpu": 68.6,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 91.0,
+       "LatMs": 0.9,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 56,
+     "Cpu": 90.5,
+     "NucleoMax": 96.1,
+     "CpuPerf": 99,
+     "RamLibreMB": 4297,
+     "Commit": 64,
+     "Paginas": 39,
+     "Gpu": 70.2,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 98.6,
+       "LatMs": 0.4,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    },
+    {
+     "T": 58,
+     "Cpu": 90.2,
+     "NucleoMax": 96.5,
+     "CpuPerf": 98,
+     "RamLibreMB": 4777,
+     "Commit": 70,
+     "Paginas": 39,
+     "Gpu": 67.9,
+     "Discos": [
+      {
+       "Disco": "0 C:",
+       "Inactivo": 91.3,
+       "LatMs": 0.7,
+       "Cola": 0,
+       "MBs": 3
+      }
+     ]
+    }
+   ],
+   "TopCpu": [
+    {
+     "Nombre": "FortniteClient-Win64-Shipping",
+     "Cpu": 78,
+     "RamMB": 3500
+    },
+    {
+     "Nombre": "chrome",
+     "Cpu": 6,
+     "RamMB": 1400
+    },
+    {
+     "Nombre": "Discord",
+     "Cpu": 2.5,
+     "RamMB": 420
+    }
+   ],
+   "TopRam": [
+    {
+     "Nombre": "FortniteClient-Win64-Shipping",
+     "Cpu": 78,
+     "RamMB": 3500
+    }
+   ],
+   "TopGpu": [
+    {
+     "Nombre": "FortniteClient-Win64-Shipping",
+     "GpuProm": 70.1,
+     "Unidad": "C:",
+     "Ruta": "C:\\Program Files\\Epic Games\\Fortnite\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe"
+    }
+   ],
+   "Temps": {
+    "Muestras": 60,
+    "CpuProm": 81.5,
+    "CpuMax": 88,
+    "GpuProm": 71.2,
+    "GpuMax": 76,
+    "HotspotMax": 97
+   }
+  },
+  "Avisos": [],
+  "Ajustes": {
+   "ModoJuego": true,
+   "Hags": false,
+   "GrabacionFondo": true,
+   "CapturaXbox": true,
+   "IntegridadMemoria": true,
+   "AmdSoftware": true,
+   "NvidiaApp": false
+  },
+  "Sensores": {
+   "Disponible": true,
+   "Admin": true,
+   "PawnIO": true,
+   "CpuTemp": true
+  }
+ }
+}

@@ -43,6 +43,11 @@
       <symbol id="i-paleta" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/></symbol>
       <symbol id="i-campana" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
       <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></symbol>
+      <symbol id="i-estrella" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></symbol>
+      <symbol id="i-volumen" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></symbol>
+      <symbol id="i-capas" viewBox="0 0 24 24"><path d="M12 2l10 5-10 5L2 7l10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></symbol>
+      <symbol id="i-viento" viewBox="0 0 24 24"><path d="M9.59 4.59A2 2 0 1 1 11 8H2"/><path d="M12.59 19.41A2 2 0 1 0 14 16H2"/><path d="M17.73 7.73A2.5 2.5 0 1 1 19.5 12H2"/></symbol>
+      <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
     </defs>
   </svg>
 
@@ -52,8 +57,14 @@
     <nav>
       <button class="nav activo" data-vista="inicio"><svg class="i"><use href="#i-pulso"/></svg>Inicio</button>
       <button class="nav" data-vista="monitor"><svg class="i"><use href="#i-monitor"/></svg>Monitor en vivo<span class="punto-vivo oculto" id="nav-vivo"></span></button>
+      <button class="nav" data-vista="temperaturas"><svg class="i"><use href="#i-temp"/></svg>Temperaturas<span class="punto-alerta oculto" id="nav-alerta"></span></button>
       <button class="nav" data-vista="informes"><svg class="i"><use href="#i-informe"/></svg>Informes<span class="contador oculto" id="nav-n-informes"></span></button>
       <button class="nav" data-vista="comparar"><svg class="i"><use href="#i-comparar"/></svg>Comparar</button>
+    </nav>
+    <div class="grupo">Tu PC</div>
+    <nav>
+      <button class="nav" data-vista="capacidades"><svg class="i"><use href="#i-estrella"/></svg>Qué puedes hacer</button>
+      <button class="nav" data-vista="optimizar"><svg class="i"><use href="#i-juego"/></svg>Optimizar juegos</button>
     </nav>
     <div class="grupo">Herramientas</div>
     <nav>
@@ -183,6 +194,52 @@
       <p class="nota">Para ver la temperatura del procesador, abre LibreHardwareMonitor (gratuito) como administrador; Doctor PC lee sus sensores solo.</p>
     </section>
 
+    <!-- ============ TEMPERATURAS ============ -->
+    <section id="v-temperaturas" class="vista">
+      <div class="cabecera"><div><h1>Temperaturas</h1><p class="sub">Procesador y gráfica en tiempo real, con alertas si se calientan más de la cuenta y consejos para refrescarlos.</p></div><span class="en-vivo" id="t-estado"><i></i>Conectando…</span></div>
+      <div id="t-banner" class="banner-alerta oculto"></div>
+      <div class="temp-grandes">
+        <div class="temp-tarjeta" id="tt-cpu"></div>
+        <div class="temp-tarjeta" id="tt-gpu"></div>
+      </div>
+      <div id="t-activar" class="tarjeta activar-cpu oculto"></div>
+      <div class="grid-2">
+        <div class="tarjeta"><div class="t-cab"><h3>Últimos minutos</h3><div class="leyenda"><span class="c1">Procesador</span><span class="c3">Gráfica</span></div></div><svg class="grafica" id="t-grafica" viewBox="0 0 600 170" preserveAspectRatio="none"></svg></div>
+        <div class="tarjeta"><div class="t-cab"><h3>Más sensores</h3><svg class="i tenue"><use href="#i-viento"/></svg></div><div id="t-detalles" class="lista-datos"></div></div>
+      </div>
+      <div class="tarjeta" style="margin-top:14px"><div class="t-cab"><h3>Alertas de temperatura</h3><button class="btn secundario" id="btn-t-ajustes"><svg class="i"><use href="#i-ajustes"/></svg>Límites y avisos</button></div><div id="t-alertas"></div></div>
+      <h2 class="titulo-seccion">Cómo mejorar la refrigeración</h2>
+      <div id="t-consejos" class="lista"></div>
+    </section>
+
+    <!-- ============ QUÉ PUEDES HACER ============ -->
+    <section id="v-capacidades" class="vista">
+      <div class="cap-hero">
+        <div class="burbuja b1"></div><div class="burbuja b2"></div>
+        <div class="cap-hero-texto">
+          <div class="etiqueta-hero"><svg class="i"><use href="#i-estrella"/></svg>Según tu hardware real</div>
+          <h1>Qué puedes hacer con tu PC</h1>
+          <p id="cap-sub">Todo lo que tu equipo es capaz de hacer, con programas gratuitos para empezar hoy mismo.</p>
+          <div class="cap-chips" id="cap-chips"></div>
+        </div>
+        <div class="cap-anillo" id="cap-anillo"></div>
+      </div>
+      <div class="barra-filtros">
+        <label class="sel-equipo">Equipo <select id="cap-equipo"></select></label>
+        <div class="segmentado" id="cap-filtros"><button data-v="todo" class="activo">Todo</button><button data-v="Juegos">Juegos</button><button data-v="Crear">Crear</button><button data-v="IA">IA</button><button data-v="Productividad">Productividad</button><button data-v="Entretenimiento">Ocio</button></div>
+      </div>
+      <div id="cap-lista" class="cap-grid"></div>
+    </section>
+
+    <!-- ============ OPTIMIZAR JUEGOS ============ -->
+    <section id="v-optimizar" class="vista">
+      <div class="cabecera"><div><h1>Optimizar juegos</h1><p class="sub">Más FPS y menos tirones con el mismo hardware: ajustes del driver, de Windows y de cada juego, pensados para tu combinación de procesador y gráfica.</p></div><label class="sel-equipo">Equipo <select id="op-equipo"></select></label></div>
+      <div id="op-cabeza"></div>
+      <div id="op-secciones"></div>
+      <h2 class="titulo-seccion">Ajustes recomendados por juego</h2>
+      <div id="op-juegos" class="grid-juegos"></div>
+    </section>
+
     <!-- ============ INFORMES ============ -->
     <section id="v-informes" class="vista">
       <div class="cabecera"><div><h1>Informes</h1><p class="sub">Cada análisis guarda un informe y un archivo <code>.json</code> con los datos, que puedes enviar a un técnico.</p></div><button class="btn secundario" id="btn-carpeta"><svg class="i"><use href="#i-carpeta"/></svg>Abrir carpeta</button></div>
@@ -239,6 +296,35 @@
           <small class="etq-campo">Color</small>
           <div class="muestras" id="a-acento"></div>
           <label class="chk espacio"><input id="a-animaciones" type="checkbox"> Animaciones</label>
+        </div>
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Overlay en juegos</h3><svg class="i tenue"><use href="#i-capas"/></svg></div>
+          <p class="sub">Muestra procesador, gráfica, RAM y temperaturas con una pequeña gráfica encima del juego, como MSI Afterburner.</p>
+          <small class="etq-campo">Cuándo mostrarlo</small>
+          <div class="segmentado" id="a-overlay"><button data-v="auto">Al jugar</button><button data-v="siempre">Siempre</button><button data-v="off">Nunca</button></div>
+          <small class="etq-campo">Posición</small>
+          <div class="segmentado" id="a-overlay-pos"><button data-v="sup-izq" title="Arriba a la izquierda">↖ Arriba</button><button data-v="sup-der" title="Arriba a la derecha">Arriba ↗</button><button data-v="inf-izq" title="Abajo a la izquierda">↙ Abajo</button><button data-v="inf-der" title="Abajo a la derecha">Abajo ↘</button></div>
+          <small class="etq-campo">Tamaño</small>
+          <div class="segmentado" id="a-overlay-tam"><button data-v="normal">Normal</button><button data-v="pequeno">Pequeño</button></div>
+          <div class="fila" style="margin-top:14px"><button class="btn secundario" id="btn-probar-overlay"><svg class="i"><use href="#i-capas"/></svg>Probar 10 segundos</button><span class="sub">Atajo: <code>Ctrl + Mayús + O</code></span></div>
+          <p class="nota">Funciona con juegos en ventana o en "pantalla completa sin bordes" (la opción por defecto en la mayoría). En pantalla completa exclusiva, Windows no permite mostrar ventanas encima.</p>
+        </div>
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Temperaturas y alertas</h3><svg class="i tenue"><use href="#i-temp"/></svg></div>
+          <label class="chk espacio"><input id="a-alertas" type="checkbox"> Avisarme si se calientan más de la cuenta</label>
+          <div class="fila umbrales"><label>Procesador <input id="a-umbral-cpu" type="number" min="60" max="105" step="1"> °C</label><label>Gráfica <input id="a-umbral-gpu" type="number" min="60" max="100" step="1"> °C</label></div>
+          <label class="chk espacio"><input id="a-sensores" type="checkbox"> Sensores avanzados: temperatura del procesador (pide administrador)</label>
+          <div id="a-sensores-estado" class="nota"></div>
+        </div>
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Sonidos</h3><svg class="i tenue"><use href="#i-volumen"/></svg></div>
+          <label class="chk espacio"><input id="a-sonidos" type="checkbox"> Sonidos al escanear, terminar y en las alertas</label>
+          <div class="fila"><input id="a-volumen" type="range" min="0" max="100" step="5"><button class="btn secundario" id="btn-probar-sonido">Probar</button></div>
+        </div>
+        <div class="tarjeta">
+          <div class="t-cab"><h3>Segundo plano</h3><svg class="i tenue"><use href="#i-escudo"/></svg></div>
+          <label class="chk espacio"><input id="a-bandeja" type="checkbox"> Al cerrar, seguir en la bandeja (necesario para el overlay y las alertas)</label>
+          <label class="chk espacio"><input id="a-inicio-win" type="checkbox"> Iniciar con Windows (minimizado en la bandeja)</label>
         </div>
         <div class="tarjeta">
           <div class="t-cab"><h3>Ficha del técnico</h3><svg class="i tenue"><use href="#i-usuario"/></svg></div>
@@ -314,9 +400,14 @@
       <div class="m-botones"><button class="btn secundario" id="m-no">Cancelar</button><button class="btn" id="m-si">Continuar</button></div>
     </div>
   </div>
+  <div id="alerta-global" class="alerta-global"></div>
   <div id="toast" class="toast oculto"></div>
   <canvas id="confeti" aria-hidden="true"></canvas>
 
+  <script src="conocimiento.js"></script>
+  <script src="capacidades.js"></script>
+  <script src="recomendaciones.js"></script>
+  <script src="sonidos.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

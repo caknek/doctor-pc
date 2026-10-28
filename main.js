@@ -1,6 +1,7 @@
 // Doctor PC — proceso principal de Electron
 // Ejecuta el motor PowerShell (engine/*.ps1), muestra los informes y gestiona las actualizaciones desde GitHub Releases.
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, protocol, net, Notification, clipboard, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, protocol, net, Notification, clipboard, nativeTheme, Tray, globalShortcut, screen, nativeImage } = require('electron');
+const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -14,6 +15,7 @@ const SCRIPT = path.join(ENGINE_DIR, 'DoctorPC.ps1');
 const SCRIPT_MONITOR = path.join(ENGINE_DIR, 'monitor.ps1');
 const SCRIPT_LIMPIEZA = path.join(ENGINE_DIR, 'limpieza.ps1');
 const SCRIPT_DISCO = path.join(ENGINE_DIR, 'prueba-disco.ps1');
+const SENSORES_EXE = path.join(ENGINE_DIR, 'sensores', 'DoctorPC.Sensores.exe');
 const BASE_DOCS = path.join(app.getPath('documents'), 'DoctorPC');
 const INFORMES = path.join(BASE_DOCS, 'Informes');
 const REGISTRO = path.join(INFORMES, 'registro_cambios.log');
@@ -27,6 +29,9 @@ let trabajo = null;        // análisis en curso
 let monitor = null;        // proceso del monitor en vivo
 let ocupado = null;        // limpieza o prueba de disco en curso
 let estadoUpdate = { estado: 'inactivo' };
+let tray = null;
+let salirDeVerdad = false;
+const iniciarOculto = process.argv.includes('--oculto');
 
 // ------------------------------------------------------------------ utilidades
 function asegurarCarpeta(p) { try { fs.mkdirSync(p, { recursive: true }); } catch (e) { /* ya existe */ } }
@@ -43,6 +48,10 @@ function configPorDefecto() {
   return {
     pais, presupuesto: 50, sinLimite: false, usados: true, admin: true, modoJuegoSeg: 120, fuenteW: 0, carpetas: [], anonimo: false,
     tema: 'sistema', acento: 'azul', animaciones: true, notificaciones: true, bienvenida: false,
+    sonidos: true, volumen: 60,
+    overlay: 'auto', overlayPos: 'sup-izq', overlayTam: 'normal',
+    alertas: true, umbralCpu: 90, umbralGpu: 85, sensoresAvanzados: false,
+    bandeja: true, iniciarConWindows: false, avisoBandeja: false,
     tecnico: { activo: false, nombre: '', whatsapp: '', correo: '' }
   };
 }
@@ -95,6 +104,7 @@ function resumenInforme(rutaJson) {
     conteo: ['critico', 'alto', 'medio', 'bajo'].reduce((a, s) => (a[s] = hall.filter(h => h.Severidad === s).length, a), {}),
     principales: hall.filter(h => h.Severidad !== 'info').slice(0, 3).map(h => ({ titulo: h.Titulo, severidad: h.Severidad })),
     reparaciones: [...new Set(hall.map(h => h.Reparacion).filter(Boolean))],
+    tienePerfil: !!g.Perfil,
     juegos: comoLista(d.Juegos).length,
     equipoInfo: {
       cpu: d.Cpu ? d.Cpu.Nombre : '',
@@ -117,7 +127,15 @@ function datosInforme(rutaJson) {
     hallazgos: comoLista(g.Hallazgos).map(h => ({ id: h.Id, titulo: h.Titulo, severidad: h.Severidad, categoria: h.Categoria })),
     juegos: comoLista(g.Juegos).map(x => ({ nombre: x.Nombre, estado: x.Estado, nivel: x.Nivel })),
     plan: comoLista(g.Plan && g.Plan.Dentro).map(c => ({ nombre: c.Nombre, min: c.Precio && c.Precio.Min, max: c.Precio && c.Precio.Max })),
-    texto: g.Resumen || ''
+    texto: g.Resumen || '',
+    perfil: g.Perfil || null,
+    ajustes: (j.Datos && j.Datos.Ajustes) || null,
+    temperaturas: comoLista(j.Datos && j.Datos.Temperaturas),
+    muestreo: j.Datos && j.Datos.Muestreo ? { modoJuego: !!j.Datos.Muestreo.ModoJuego, temps: j.Datos.Muestreo.Temps || null, segundos: j.Datos.Muestreo.Segundos } : null,
+    juegosDetalle: comoLista(g.Juegos).map(x => ({ nombre: x.Nombre, estado: x.Estado, nivel: x.Nivel, enHDD: !!x.EnHDD, minGpu: x.MinGpu, recGpu: x.RecGpu, minCpu: x.MinCpu, recCpu: x.RecCpu, minRam: x.MinRam, recRam: x.RecRam, bajoMin: comoLista(x.BajoMinimo), bajoRec: comoLista(x.BajoRecomendado), notas: comoLista(x.Notas), catalogo: x.Catalogo })),
+    idsHallazgos: comoLista(g.Hallazgos).map(h => h.Id),
+    bloqueadas: comoLista(g.Plan && g.Plan.Bloqueadas).map(b => ({ nombre: b.Nombre, motivo: b.Motivo })),
+    sensores: (j.Datos && j.Datos.Sensores) || null
   };
 }
 
@@ -142,6 +160,34 @@ function lanzarScript(script, args, elevar, visible) {
   return spawn('powershell.exe', [...base, '-EncodedCommand', comandoCodificado(cmd)], { windowsHide: true });
 }
 const esUacRechazado = (codigo, err) => codigo === 1223 || /UAC_RECHAZADO/.test(err || '');
+// Ejecutable con permisos de administrador (UAC); el proceso devuelto es el intermediario que espera a que termine
+function lanzarElevado(exe, args, visible, esperar) {
+  const lista = args.map(x => '"' + String(x).replace(/"/g, '').replace(/\\$/, '\\.') + '"').join(' ');
+  const cmd = `$ErrorActionPreference='Stop'; try { $p = Start-Process -FilePath ${citaPs(exe)} -Verb RunAs -WindowStyle ${visible ? 'Normal' : 'Hidden'} -PassThru -ArgumentList ${citaPs(lista)}; $p.WaitForExit(); exit $p.ExitCode } catch { [Console]::Error.WriteLine('UAC_RECHAZADO'); exit 1223 }`;
+  return spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', comandoCodificado(cmd)], { windowsHide: true });
+}
+
+// Sigue un archivo de texto y entrega cada línea nueva
+function seguirProgresoGenerico(ruta, alTexto) {
+  const est = { offset: 0, resto: '' };
+  const leer = () => {
+    try {
+      const st = fs.statSync(ruta);
+      if (st.size > est.offset) {
+        const fd = fs.openSync(ruta, 'r');
+        const buf = Buffer.alloc(st.size - est.offset);
+        fs.readSync(fd, buf, 0, buf.length, est.offset);
+        fs.closeSync(fd);
+        est.offset = st.size;
+        const lineas = (est.resto + buf.toString('utf8')).split(/\r?\n/);
+        est.resto = lineas.pop();
+        lineas.forEach(l => { l = l.replace(/^\uFEFF/, '').trim(); if (l) alTexto(l); });
+      }
+    } catch (e) { /* aún no existe */ }
+  };
+  const timer = setInterval(leer, 400);
+  return { parar: () => { clearInterval(timer); leer(); } };
+}
 
 // Sigue un archivo de progreso con líneas ##TIPO|a|b
 function seguirProgreso(ruta, alLinea) {
@@ -222,6 +268,7 @@ function iniciarAnalisis(opciones) {
     if (estado.resultado) {
       const r = resumenInforme(estado.resultado.json) || {};
       enviar('analisis', { tipo: 'fin', informe: r });
+      cargarJuegosConocidos();
       if (!opciones.desdeJson) avisar('Análisis terminado', `Salud del equipo: ${r.salud}/100 (${r.etiqueta}). Toca para ver el informe.`);
     } else if (estado.cancelado) {
       enviar('analisis', { tipo: 'cancelado' });
@@ -264,23 +311,316 @@ function ejecutarReparacion(id) {
   });
 }
 
-// ------------------------------------------------------------------ monitor en vivo
-function iniciarMonitor() {
-  if (monitor || !fs.existsSync(SCRIPT_MONITOR)) return !!monitor;
-  const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT_MONITOR, '-PadrePid', String(process.pid)], { windowsHide: true });
-  let resto = '';
-  proc.stdout.on('data', d => {
-    const t = resto + d.toString('utf8');
-    const lineas = t.split(/\r?\n/);
-    resto = lineas.pop();
-    for (const l of lineas) { if (l.startsWith('{')) { try { enviar('monitor', JSON.parse(l)); } catch (e) { /* línea incompleta */ } } }
-  });
-  proc.on('close', () => { if (monitor === proc) monitor = null; });
-  proc.on('error', () => { monitor = null; });
-  monitor = proc;
-  return true;
+// ------------------------------------------------------------------ monitor en vivo, sensores, juego, overlay y alertas
+// El monitor (monitor.ps1) y el lector de sensores (DoctorPC.Sensores.exe) funcionan mientras alguien los necesite:
+// una vista abierta (Monitor, Temperaturas), el overlay en juegos o las alertas de temperatura.
+const subs = new Set();
+const sensores = { proc: null, archivo: null, ctl: null, seg: null, ultimo: null, ts: 0, elevado: false, error: null, intentoSinAdmin: false };
+const juego = { activo: false, n: '', pos: 0, neg: 0 };
+const alerta = { cpu: { racha: 0, ultima: 0 }, gpu: { racha: 0, ultima: 0 } };
+const historialAlertas = [];
+const sesion = { inicio: Date.now(), cpu: null, gpu: null, hot: null, hist: [] };
+let ctlMonitor = null;
+let overlay = null;
+let overlayForzado = null;     // null = según el modo; true/false = atajo de teclado o prueba
+let juegosConocidos = { rutas: [], exes: new Set() };
+let pawnioInstalado = null;
+
+const NO_JUEGO = /^(explorer|doctor ?pc|electron|chrome|msedge|firefox|opera|brave|vivaldi|vlc|mpc-hc(64)?|potplayermini(64)?|wmplayer|video\.ui|applicationframehost|searchhost|searchapp|shellexperiencehost|startmenuexperiencehost|lockapp|textinputhost|teams|ms-teams|zoom|obs(64|32)?|discord|steamwebhelper|steam|epicgameslauncher|riotclientux|powershell|pwsh|windowsterminal|cmd|code|devenv|taskmgr|mstsc|photos|microsoft\.photos)$/i;
+const RUTAS_JUEGO = /\\steamapps\\common\\|\\epic games\\|\\xboxgames\\|\\riot games\\|\\gog games\\|\\ea games\\|\\ubisoft game launcher\\games\\|\\battle\.net\\|\\games\\|\\juegos\\|\\roblox\\versions\\|\\modifiablewindowsapps\\/i;
+
+function necesitaFondo(c) { return c.overlay !== 'off' || !!c.alertas; }
+function intervaloDeseado() { return (subs.has('vista') || juego.activo || subs.has('prueba') || overlayForzado) ? 1000 : 2000; }
+function escribirSeguro(f, t) { if (f) { try { fs.writeFileSync(f, String(t)); } catch (e) { /* nada */ } } }
+function ajustarIntervalo() { const v = intervaloDeseado(); escribirSeguro(ctlMonitor, v); escribirSeguro(sensores.ctl, v); }
+
+function actualizarMonitor() {
+  const c = cargarConfig();
+  if (necesitaFondo(c)) subs.add('fondo'); else subs.delete('fondo');
+  if (subs.size) arrancarMonitor(); else pararMonitor();
+  ajustarIntervalo();
 }
-function detenerMonitor() { if (monitor) { try { monitor.kill(); } catch (e) { /* nada */ } monitor = null; } }
+
+function seguirJsonl(ruta, alObjeto) {
+  return seguirProgresoGenerico(ruta, l => { if (l.startsWith('{')) { try { alObjeto(JSON.parse(l)); } catch (e) { /* línea incompleta */ } } });
+}
+
+function arrancarMonitor() {
+  if (!monitor && fs.existsSync(SCRIPT_MONITOR)) {
+    asegurarCarpeta(TEMP);
+    ctlMonitor = path.join(TEMP, 'monitor.ctl');
+    escribirSeguro(ctlMonitor, intervaloDeseado());
+    const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT_MONITOR, '-PadrePid', String(process.pid), '-ArchivoControl', ctlMonitor, '-IntervaloMs', String(intervaloDeseado())], { windowsHide: true });
+    let resto = '';
+    proc.stdout.on('data', d => {
+      const t = resto + d.toString('utf8');
+      const lineas = t.split(/\r?\n/);
+      resto = lineas.pop();
+      for (const l of lineas) { if (l.startsWith('{')) { try { procesarMuestra(JSON.parse(l)); } catch (e) { /* línea incompleta */ } } }
+    });
+    proc.on('close', () => { if (monitor === proc) monitor = null; });
+    proc.on('error', () => { monitor = null; });
+    monitor = proc;
+  }
+  arrancarSensores();
+}
+function pararMonitor() {
+  if (monitor) { escribirSeguro(ctlMonitor, 'salir'); const m = monitor; monitor = null; setTimeout(() => { try { m.kill(); } catch (e) { /* nada */ } }, 2500); }
+  pararSensores();
+  if (overlay && overlay.isVisible()) overlay.hide();
+}
+
+function arrancarSensores(forzarSinAdmin) {
+  if (sensores.proc || !fs.existsSync(SENSORES_EXE)) return;
+  asegurarCarpeta(TEMP);
+  const id = Date.now();
+  sensores.archivo = path.join(TEMP, `sensores_${id}.jsonl`);
+  sensores.ctl = path.join(TEMP, `sensores_${id}.ctl`);
+  fs.writeFileSync(sensores.archivo, '');
+  escribirSeguro(sensores.ctl, intervaloDeseado());
+  const elevar = !forzarSinAdmin && !!cargarConfig().sensoresAvanzados;
+  const args = ['--intervalo', String(intervaloDeseado()), '--padre', String(process.pid), '--salida', sensores.archivo, '--control', sensores.ctl];
+  const proc = elevar ? lanzarElevado(SENSORES_EXE, args, false, false) : spawn(SENSORES_EXE, args, { windowsHide: true });
+  sensores.proc = proc; sensores.elevado = elevar; sensores.error = null;
+  const archivo = sensores.archivo;
+  sensores.seg = seguirJsonl(archivo, j => {
+    if (j.error) { sensores.error = j.error; return; }
+    sensores.ultimo = j; sensores.ts = Date.now();
+  });
+  let err = '';
+  if (proc.stderr) proc.stderr.on('data', d => { err += d.toString(); });
+  proc.on('close', codigo => {
+    if (sensores.proc !== proc) return;
+    sensores.proc = null;
+    if (sensores.seg) { sensores.seg.parar(); sensores.seg = null; }
+    setTimeout(() => { try { fs.unlinkSync(archivo); } catch (e) { /* nada */ } }, 1500);
+    if (elevar && esUacRechazado(codigo, err)) {
+      sensores.error = 'Sin permiso de administrador: se leen solo los sensores básicos.';
+      if (subs.size) arrancarSensores(true);
+    }
+  });
+  proc.on('error', e => { sensores.proc = null; sensores.error = e.message; });
+}
+function pararSensores() {
+  if (!sensores.proc) return;
+  escribirSeguro(sensores.ctl, 'salir');
+  const p = sensores.proc; sensores.proc = null;
+  if (sensores.seg) { sensores.seg.parar(); sensores.seg = null; }
+  setTimeout(() => { try { p.kill(); } catch (e) { /* nada */ } }, 3000);
+}
+function reiniciarSensores() { pararSensores(); sensores.ultimo = null; sensores.ts = 0; if (subs.size) setTimeout(() => arrancarSensores(), 1200); }
+
+function comprobarPawnio() {
+  return new Promise(resolve => {
+    if (process.platform !== 'win32') { pawnioInstalado = false; return resolve(false); }
+    const p = spawn('reg.exe', ['query', 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\PawnIO'], { windowsHide: true });
+    p.on('close', c => { pawnioInstalado = c === 0; resolve(pawnioInstalado); });
+    p.on('error', () => { pawnioInstalado = false; resolve(false); });
+  });
+}
+
+function acumular(st, v) {
+  if (v == null || isNaN(v)) return st;
+  if (!st) return { min: v, max: v, suma: v, n: 1 };
+  st.min = Math.min(st.min, v); st.max = Math.max(st.max, v); st.suma += v; st.n++;
+  return st;
+}
+const resumenStat = st => st ? { min: st.min, max: st.max, prom: Math.round(st.suma / st.n * 10) / 10 } : null;
+
+function procesarMuestra(m) {
+  const c = cargarConfig();
+  const s = Date.now() - sensores.ts < 7000 ? sensores.ultimo : null;
+  // CPU
+  if (s && s.cpu && s.cpu.temp != null) { m.cpuTemp = s.cpu.temp; m.cpuTempFuente = 'sensor'; }
+  else if (m.temp != null) { m.cpuTemp = m.temp; m.cpuTempFuente = 'lhm'; }
+  else if (m.tempAcpi != null) { m.cpuTemp = m.tempAcpi; m.cpuTempFuente = 'acpi'; }
+  else { m.cpuTemp = null; m.cpuTempFuente = null; }
+  if (s && s.cpu) { m.cpuPot = s.cpu.potencia; m.cpuReloj = s.cpu.reloj; }
+  // GPU: la dedicada con más carga
+  const gpus = s ? (s.gpus || []) : [];
+  const ded = gpus.filter(g => g.tipo !== 'GpuIntel');
+  const g = (ded.length ? ded : gpus).slice().sort((a, b) => (b.carga || 0) - (a.carga || 0))[0];
+  if (g) {
+    m.gpuNombre = g.nombre; m.gpuTemp = g.temp; m.gpuHot = g.hotspot; m.gpuMemTemp = g.memTemp; m.gpuReloj = g.reloj; m.gpuPot = g.potencia;
+    m.vramUsada = g.vramUsadaMB; m.vramTotal = g.vramTotalMB; m.gpuVentRpm = g.ventRpm; m.gpuVentPct = g.ventPct;
+    if (g.carga != null && (m.gpu == null || g.tipo !== 'GpuIntel')) m.gpu = g.carga;
+  }
+  m.ventiladores = s ? (s.ventiladores || []) : [];
+  m.sensores = { activo: !!s, admin: !!(s && s.admin), pawnio: s ? !!s.pawnio : pawnioInstalado, elevado: sensores.elevado, avanzados: !!c.sensoresAvanzados, error: sensores.error, hayLector: fs.existsSync(SENSORES_EXE) };
+  // Sesión
+  sesion.cpu = acumular(sesion.cpu, m.cpuTempFuente === 'acpi' ? null : m.cpuTemp);
+  sesion.gpu = acumular(sesion.gpu, m.gpuTemp);
+  sesion.hot = acumular(sesion.hot, m.gpuHot);
+  sesion.hist.push({ t: Date.now(), cpu: m.cpuTemp, gpu: m.gpuTemp, cl: m.cpu, gl: m.gpu });
+  if (sesion.hist.length > 300) sesion.hist.shift();
+  m.sesion = { cpu: resumenStat(sesion.cpu), gpu: resumenStat(sesion.gpu), hot: resumenStat(sesion.hot), desde: sesion.inicio };
+  // Juego en primer plano
+  const esJ = esJuego(m.fg);
+  if (esJ) { juego.pos++; juego.neg = 0; } else { juego.neg++; juego.pos = 0; }
+  const antes = juego.activo;
+  if (!juego.activo && juego.pos >= 3) { juego.activo = true; juego.n = m.fg.n; }
+  if (juego.activo && juego.neg >= 4) { juego.activo = false; }
+  if (antes !== juego.activo) { overlayForzado = null; ajustarIntervalo(); enviar('juego', { activo: juego.activo, n: juego.n }); }
+  m.juego = { activo: juego.activo, n: juego.n };
+  // Overlay, alertas, bandeja y ventana
+  actualizarOverlay(m, c);
+  revisarAlertas(m, c);
+  if (tray && m.t % 5 === 0) {
+    const tt = ['Doctor PC'];
+    if (m.cpuTemp != null) tt.push(`CPU ${Math.round(m.cpuTemp)} °C`);
+    if (m.gpuTemp != null) tt.push(`GPU ${Math.round(m.gpuTemp)} °C`);
+    tray.setToolTip(tt.join(' · '));
+  }
+  if (win && !win.isDestroyed() && win.isVisible()) enviar('monitor', m);
+}
+
+function esJuego(fg) {
+  if (!fg || !fg.n || NO_JUEGO.test(fg.n)) return false;
+  const ruta = String(fg.ruta || '').toLowerCase();
+  if (ruta && (RUTAS_JUEGO.test(ruta) || juegosConocidos.rutas.some(r => ruta.startsWith(r)))) return true;
+  if (juegosConocidos.exes.has(String(fg.n).toLowerCase() + '.exe')) return true;
+  return !!fg.fs && Number(fg.gpu) >= 30;
+}
+
+function cargarJuegosConocidos() {
+  const usuario = (() => { try { return os.userInfo().username; } catch (e) { return ''; } })();
+  const rutas = new Set(), exes = new Set();
+  for (const inf of listarInformes().slice(0, 5)) {
+    const j = leerJson(inf.json);
+    for (const x of comoLista(j && j.Datos && j.Datos.Juegos)) {
+      if (x.Ruta) rutas.add(String(x.Ruta).replace('<usuario>', usuario).toLowerCase().replace(/\\+$/, '') + '\\');
+      if (x.Exe) exes.add(String(x.Exe).toLowerCase());
+    }
+  }
+  juegosConocidos = { rutas: [...rutas], exes };
+}
+
+// ---------------- overlay (estilo MSI Afterburner): ventana transparente, siempre encima y que no recibe clics
+const TAM_OVERLAY = { normal: [244, 168], pequeno: [196, 132] };
+function crearOverlay() {
+  overlay = new BrowserWindow({
+    width: 244, height: 168, frame: false, transparent: true, resizable: false, movable: false, focusable: false,
+    skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, backgroundColor: '#00000000',
+    webPreferences: { preload: path.join(__dirname, 'overlay-preload.js'), contextIsolation: true, sandbox: true, backgroundThrottling: false }
+  });
+  overlay.setIgnoreMouseEvents(true);
+  overlay.setAlwaysOnTop(true, 'screen-saver');
+  overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  overlay.loadFile(path.join(__dirname, 'renderer', 'overlay.html'));
+  overlay.on('closed', () => { overlay = null; });
+}
+function overlayDeseado(c) {
+  if (overlayForzado !== null) return overlayForzado;
+  if (c.overlay === 'siempre') return true;
+  if (c.overlay === 'auto') return juego.activo;
+  return false;
+}
+function posicionarOverlay(m, c) {
+  const [w, h] = TAM_OVERLAY[c.overlayTam === 'pequeno' ? 'pequeno' : 'normal'];
+  let pant = screen.getPrimaryDisplay();
+  try {
+    if (m && m.fg && m.fg.mon) {
+      const [l, t, r, b] = m.fg.mon;
+      const centro = { x: Math.round((l + r) / 2), y: Math.round((t + b) / 2) };
+      const p = process.platform === 'win32' && screen.screenToDipPoint ? screen.screenToDipPoint(centro) : centro;
+      pant = screen.getDisplayNearestPoint(p);
+    }
+  } catch (e) { /* pantalla principal */ }
+  const b = pant.bounds, mg = 12, pos = c.overlayPos || 'sup-izq';
+  const x = pos.endsWith('izq') ? b.x + mg : b.x + b.width - w - mg;
+  const y = pos.startsWith('sup') ? b.y + mg : b.y + b.height - h - mg;
+  const actual = overlay.getBounds();
+  if (actual.x !== x || actual.y !== y || actual.width !== w || actual.height !== h) overlay.setBounds({ x, y, width: w, height: h });
+}
+function actualizarOverlay(m, c) {
+  if (overlayDeseado(c)) {
+    if (!overlay) crearOverlay();
+    posicionarOverlay(m, c);
+    if (!overlay.isVisible()) overlay.showInactive();
+    overlay.setAlwaysOnTop(true, 'screen-saver');
+    if (m) overlay.webContents.send('datos', {
+      cpu: m.cpu, cpuTemp: m.cpuTemp, cpuTempFuente: m.cpuTempFuente, gpu: m.gpu, gpuTemp: m.gpuTemp, gpuHot: m.gpuHot,
+      ramUsada: m.ramUsada, ramTotal: m.ramTotal, vramUsada: m.vramUsada, vramTotal: m.vramTotal, gpuReloj: m.gpuReloj, cpuReloj: m.cpuReloj,
+      juego: juego.activo ? juego.n : '', umbralCpu: c.umbralCpu, umbralGpu: c.umbralGpu, tam: c.overlayTam, gpuNombre: m.gpuNombre || ''
+    });
+  } else if (overlay && overlay.isVisible()) overlay.hide();
+}
+function alternarOverlay() {
+  const visible = !!(overlay && overlay.isVisible());
+  overlayForzado = !visible;
+  if (overlayForzado) subs.add('atajo'); else subs.delete('atajo');
+  actualizarMonitor();
+  if (!overlayForzado && overlay) overlay.hide();
+}
+
+// ---------------- alertas de temperatura
+function revisarAlertas(m, c) {
+  if (!c.alertas) return;
+  const comps = [['cpu', m.cpuTempFuente === 'acpi' ? null : m.cpuTemp, Number(c.umbralCpu) || 90, 'procesador'], ['gpu', m.gpuTemp, Number(c.umbralGpu) || 85, 'tarjeta gráfica']];
+  for (const [k, t, u, nombre] of comps) {
+    const a = alerta[k];
+    if (t != null && t >= u) a.racha++; else a.racha = 0;
+    if (a.racha >= 3 && Date.now() - a.ultima > 5 * 60 * 1000) {
+      a.ultima = Date.now();
+      const ev = { comp: k, nombre, temp: Math.round(t), umbral: u, juego: juego.activo ? juego.n : null, fecha: Date.now() };
+      historialAlertas.unshift(ev); if (historialAlertas.length > 20) historialAlertas.pop();
+      enviar('alerta', ev);
+      if (overlay && overlay.isVisible()) overlay.webContents.send('alerta', ev);
+      if (Notification.isSupported() && (!win || !win.isVisible() || !win.isFocused())) {
+        const n = new Notification({ title: `Tu ${nombre} está a ${ev.temp} °C`, body: `Supera tu límite de ${u} °C${ev.juego ? ' mientras juegas ' + ev.juego : ''}. Abre Doctor PC > Temperaturas para ver qué hacer.`, icon: path.join(__dirname, 'renderer', 'icon.png'), urgency: 'critical' });
+        n.on('click', () => { mostrarVentana(); enviar('ir', 'temperaturas'); });
+        n.show();
+      }
+    }
+  }
+}
+
+// ---------------- bandeja del sistema e inicio con Windows
+function mostrarVentana() {
+  if (!win || win.isDestroyed()) crearVentana(true);
+  else { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+}
+function salirApp() { salirDeVerdad = true; app.quit(); }
+function crearBandeja() {
+  if (tray) return;
+  try {
+    const img = nativeImage.createFromPath(path.join(__dirname, 'renderer', 'icon.png')).resize({ width: 16, height: 16 });
+    tray = new Tray(img);
+    tray.setToolTip('Doctor PC');
+    tray.on('click', mostrarVentana);
+    actualizarMenuBandeja();
+  } catch (e) { tray = null; }
+}
+function actualizarMenuBandeja() {
+  if (!tray) return;
+  const c = cargarConfig();
+  const modo = v => () => { guardarConfig({ overlay: v }); aplicarConfigFondo(); enviar('config', cargarConfig()); };
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Abrir Doctor PC', click: mostrarVentana },
+    { type: 'separator' },
+    { label: 'Overlay en juegos', submenu: [
+      { label: 'Automático (al jugar)', type: 'radio', checked: c.overlay === 'auto', click: modo('auto') },
+      { label: 'Siempre visible', type: 'radio', checked: c.overlay === 'siempre', click: modo('siempre') },
+      { label: 'Desactivado', type: 'radio', checked: c.overlay === 'off', click: modo('off') }
+    ] },
+    { label: 'Mostrar u ocultar overlay (Ctrl+Mayús+O)', click: alternarOverlay },
+    { label: 'Alertas de temperatura', type: 'checkbox', checked: !!c.alertas, click: i => { guardarConfig({ alertas: i.checked }); aplicarConfigFondo(); enviar('config', cargarConfig()); } },
+    { type: 'separator' },
+    { label: 'Salir de Doctor PC', click: salirApp }
+  ]));
+}
+function aplicarInicioWindows(c) {
+  if (!app.isPackaged || process.platform !== 'win32') return;
+  try { app.setLoginItemSettings({ openAtLogin: !!c.iniciarConWindows, path: process.execPath, args: ['--oculto'] }); } catch (e) { /* nada */ }
+}
+function aplicarConfigFondo(antes) {
+  const c = cargarConfig();
+  actualizarMonitor();
+  actualizarMenuBandeja();
+  aplicarInicioWindows(c);
+  if (antes && !!antes.sensoresAvanzados !== !!c.sensoresAvanzados) reiniciarSensores();
+  if (overlay && !overlayDeseado(c)) overlay.hide();
+}
 
 // ------------------------------------------------------------------ limpieza
 function ejecutarLimpieza(modo, elementos) {
@@ -398,7 +738,7 @@ function buscarActualizacion() {
 // ------------------------------------------------------------------ ventana
 protocol.registerSchemesAsPrivileged([{ scheme: 'doctorpc', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
-function crearVentana() {
+function crearVentana(mostrarYa) {
   const oscuro = nativeTheme.shouldUseDarkColors;
   win = new BrowserWindow({
     width: 1260, height: 860, minWidth: 980, minHeight: 640,
@@ -407,20 +747,34 @@ function crearVentana() {
     backgroundColor: oscuro ? '#0d1117' : '#f3f5fb',
     autoHideMenuBar: true,
     show: false,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, autoplayPolicy: 'no-user-gesture-required' }
   });
   Menu.setApplicationMenu(null);
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => { if (mostrarYa || !iniciarOculto) win.show(); });
+  // Al cerrar: si el overlay o las alertas están activos, Doctor PC sigue en la bandeja
+  win.on('close', e => {
+    const c = cargarConfig();
+    if (!salirDeVerdad && c.bandeja && necesitaFondo(c) && tray) {
+      e.preventDefault();
+      win.hide();
+      subs.delete('vista'); ajustarIntervalo();
+      if (!c.avisoBandeja && Notification.isSupported()) {
+        new Notification({ title: 'Doctor PC sigue en la bandeja', body: 'Vigila las temperaturas y muestra el overlay al jugar. Para cerrarlo del todo: clic derecho en el icono > Salir.', icon: path.join(__dirname, 'renderer', 'icon.png') }).show();
+        guardarConfig({ avisoBandeja: true });
+      }
+    }
+  });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:\/\//i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file:')) { e.preventDefault(); if (/^https?:\/\//i.test(url)) shell.openExternal(url); } });
-  win.on('closed', () => { win = null; detenerMonitor(); });
+  win.on('closed', () => { win = null; subs.delete('vista'); actualizarMonitor(); });
 }
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+  app.on('second-instance', () => mostrarVentana());
+  app.on('before-quit', () => { salirDeVerdad = true; });
 
   app.whenReady().then(() => {
     app.setAppUserModelId('com.caknek.doctorpc');
@@ -443,9 +797,11 @@ if (!app.requestSingleInstanceLock()) {
       informes: listarInformes(),
       carpetaInformes: INFORMES,
       motorOk: fs.existsSync(SCRIPT),
-      update: estadoUpdate
+      update: estadoUpdate,
+      equipo: os.hostname(),
+      hayLectorSensores: fs.existsSync(SENSORES_EXE)
     }));
-    ipcMain.handle('config:guardar', (e, cfg) => guardarConfig(cfg || {}));
+    ipcMain.handle('config:guardar', (e, cfg) => { const antes = cargarConfig(); const c = guardarConfig(cfg || {}); aplicarConfigFondo(antes); return c; });
     ipcMain.handle('carpeta:elegir', async () => {
       const r = await dialog.showOpenDialog(win, { title: 'Carpeta donde tienes juegos', properties: ['openDirectory'] });
       return r.canceled ? null : r.filePaths[0];
@@ -471,24 +827,64 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('copiar', (e, texto) => { clipboard.writeText(String(texto || '')); return true; });
     ipcMain.handle('whatsapp', (e, texto) => { shell.openExternal('https://wa.me/?text=' + encodeURIComponent(String(texto || '').slice(0, 3500))); return true; });
     ipcMain.handle('reparar', (e, id) => ejecutarReparacion(String(id || '')));
-    ipcMain.handle('monitor:iniciar', () => iniciarMonitor());
-    ipcMain.handle('monitor:detener', () => { detenerMonitor(); return true; });
+    ipcMain.handle('monitor:iniciar', () => { subs.add('vista'); actualizarMonitor(); return fs.existsSync(SCRIPT_MONITOR); });
+    ipcMain.handle('monitor:detener', () => { subs.delete('vista'); actualizarMonitor(); return true; });
+    ipcMain.handle('temps:estado', async () => ({
+      sesion: { cpu: resumenStat(sesion.cpu), gpu: resumenStat(sesion.gpu), hot: resumenStat(sesion.hot), desde: sesion.inicio },
+      hist: sesion.hist.slice(-300), alertas: historialAlertas,
+      pawnio: await comprobarPawnio(), hayLector: fs.existsSync(SENSORES_EXE), sensoresElevados: sensores.elevado, errorSensores: sensores.error,
+      juego: { activo: juego.activo, n: juego.n }
+    }));
+    ipcMain.handle('sensores:reiniciar', () => { reiniciarSensores(); return true; });
+    ipcMain.handle('overlay:probar', () => {
+      overlayForzado = true; subs.add('prueba'); actualizarMonitor();
+      setTimeout(() => { overlayForzado = null; subs.delete('prueba'); actualizarMonitor(); if (overlay && !overlayDeseado(cargarConfig())) overlay.hide(); }, 10000);
+      return true;
+    });
+    ipcMain.handle('abrir:ajuste', (e, id) => {
+      const web = { amdweb: 'https://www.amd.com/es/support/download/drivers.html', nvidiaweb: 'https://www.nvidia.com/es-la/software/nvidia-app/', pawnio: 'https://pawnio.eu/', intelweb: 'https://www.intel.la/content/www/xl/es/support/detect.html' };
+      const ms = { modojuego: 'ms-settings:gaming-gamemode', capturas: 'ms-settings:gaming-gamedvr', graficos: 'ms-settings:display-advancedgraphics', pantalla: 'ms-settings:display-advanced', integridad: 'windowsdefender://coreisolation', almacenamiento: 'ms-settings:storagesense', actualizaciones: 'ms-settings:windowsupdate' };
+      if (web[id]) { shell.openExternal(web[id]); return true; }
+      if (ms[id]) { shell.openExternal(ms[id]); return true; }
+      if (id === 'energia') { spawn('control.exe', ['powercfg.cpl'], { detached: true, windowsHide: false }); return true; }
+      if (id === 'inicio') { spawn('taskmgr.exe', ['/0', '/startup'], { detached: true }); return true; }
+      if (id === 'amd') {
+        const exe = 'C:\\Program Files\\AMD\\CNext\\CNext\\RadeonSoftware.exe';
+        if (fs.existsSync(exe)) spawn(exe, [], { detached: true }); else shell.openExternal(web.amdweb);
+        return true;
+      }
+      if (id === 'nvidia') {
+        const exe = ['C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\CEF\\NVIDIA app.exe', 'C:\\Program Files\\NVIDIA Corporation\\NVIDIA App\\CEF\\NVIDIA App.exe'].find(f => fs.existsSync(f));
+        if (exe) spawn(exe, [], { detached: true }); else shell.openExternal(web.nvidiaweb);
+        return true;
+      }
+      return false;
+    });
     ipcMain.handle('limpieza', (e, modo, elementos) => ejecutarLimpieza(modo === 'limpiar' ? 'limpiar' : 'analizar', elementos));
     ipcMain.handle('disco:unidades', () => listarUnidades());
     ipcMain.handle('disco:probar', (e, unidad) => pruebaDisco(unidad));
     ipcMain.handle('externo', (e, url) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return true; });
     ipcMain.handle('update:buscar', () => { buscarActualizacion(); return true; });
     ipcMain.handle('update:descargar', () => { if (autoUpdater && app.isPackaged) autoUpdater.downloadUpdate().catch(err => cambiarEstadoUpdate({ estado: 'error', mensaje: err.message })); return true; });
-    ipcMain.handle('update:instalar', () => { if (autoUpdater && app.isPackaged) setImmediate(() => autoUpdater.quitAndInstall(true, true)); return true; });
+    ipcMain.handle('update:instalar', () => { if (autoUpdater && app.isPackaged) { salirDeVerdad = true; setImmediate(() => autoUpdater.quitAndInstall(true, true)); } return true; });
 
     configurarActualizador();
     crearVentana();
+    crearBandeja();
+    cargarJuegosConocidos();
+    comprobarPawnio();
+    aplicarInicioWindows(cargarConfig());
+    try { globalShortcut.register('CommandOrControl+Shift+O', alternarOverlay); } catch (e) { /* atajo ocupado */ }
+    actualizarMonitor();
     if (app.isPackaged) setTimeout(buscarActualizacion, 5000);
   });
 
   app.on('window-all-closed', () => {
     if (trabajo) cancelarAnalisis();
-    detenerMonitor();
+    const c = cargarConfig();
+    if (!salirDeVerdad && c.bandeja && necesitaFondo(c) && tray) return;   // sigue en la bandeja
+    pararMonitor();
     app.quit();
   });
+  app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch (e) { /* nada */ } pararMonitor(); });
 }

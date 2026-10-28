@@ -1,9 +1,10 @@
-Doctor PC 0.3: más herramientas y una cara nueva.
+Doctor PC 0.4: temperaturas, overlay en juegos y recomendaciones para tu hardware.
 
-- Monitor en vivo: CPU, RAM, gráfica, discos, red y temperatura en tiempo real, con historial de 60 segundos.
-- Limpieza segura: mide cuánto espacio puedes liberar y tú eliges qué borrar.
-- Velocidad del disco: mide de verdad tu disco y te dice si es el que hace lento al PC.
-- Comparar informes: antes y después de una reparación.
-- Ficha del técnico en los informes, exportar a PDF y enviar el resumen por WhatsApp.
-- Diseño nuevo con animaciones, tema claro/oscuro y 6 colores a elegir.
-- Avisos al terminar un análisis y progreso en la barra de tareas.
+- Temperaturas: procesador y gráfica en tiempo real, con mínimo, media y máximo, punto caliente, ventiladores y consumo.
+- Alertas de calor: un aviso si el procesador o la gráfica pasan tu límite, aunque Doctor PC esté en la bandeja.
+- Consejos de refrigeración pensados para tu equipo (polvo, pasta térmica, flujo de aire, disipador, undervolt…).
+- Overlay en juegos al estilo MSI Afterburner: CPU, GPU, RAM y VRAM con temperatura y una pequeña gráfica. Se activa solo al jugar (Ctrl+Mayús+O para mostrarlo u ocultarlo).
+- Qué puedes hacer con tu PC: lo que tu hardware es capaz de hacer (juegos, streaming, IA local, emulación, VR, creación) con programas gratuitos.
+- Optimizar juegos: ajustes del driver (AMD, NVIDIA, Intel), de Windows y de cada juego, para sacar más FPS al mismo hardware.
+- Sonidos al escanear, al terminar y en las alertas (se pueden desactivar).
+- Doctor PC puede quedarse en la bandeja e iniciarse con Windows para vigilar las temperaturas.

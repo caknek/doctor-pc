@@ -31,5 +31,13 @@ contextBridge.exposeInMainWorld('doctor', {
   onAnalisis: fn => ipcRenderer.on('analisis', (e, d) => fn(d)),
   onUpdate: fn => ipcRenderer.on('update', (e, d) => fn(d)),
   onMonitor: fn => ipcRenderer.on('monitor', (e, d) => fn(d)),
-  onDisco: fn => ipcRenderer.on('disco', (e, d) => fn(d))
+  onDisco: fn => ipcRenderer.on('disco', (e, d) => fn(d)),
+  tempsEstado: () => ipcRenderer.invoke('temps:estado'),
+  reiniciarSensores: () => ipcRenderer.invoke('sensores:reiniciar'),
+  probarOverlay: () => ipcRenderer.invoke('overlay:probar'),
+  abrirAjuste: id => ipcRenderer.invoke('abrir:ajuste', id),
+  onAlerta: fn => ipcRenderer.on('alerta', (e, d) => fn(d)),
+  onJuego: fn => ipcRenderer.on('juego', (e, d) => fn(d)),
+  onIr: fn => ipcRenderer.on('ir', (e, d) => fn(d)),
+  onConfig: fn => ipcRenderer.on('config', (e, d) => fn(d))
 });

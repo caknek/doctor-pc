@@ -54,7 +54,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
-$script:Version = '0.3.0'
+$script:Version = '0.4.0'
 $script:Raiz = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $script:DirDatos = Join-Path $script:Raiz 'datos'
 $script:EsWindows = ($env:OS -eq 'Windows_NT')
@@ -483,13 +483,98 @@ function Get-Temperaturas {
             $t += [ordered]@{ Fuente = ($ns -replace 'root\\', ''); Componente = $comp; Sensor = "$($s.Name)"; Valor = [math]::Round((Get-Num $s.Value), 1); Max = [math]::Round((Get-Num $s.Max), 1) }
         }
     }
+    # Lector de sensores de Doctor PC (LibreHardwareMonitorLib): GPU siempre; CPU con PawnIO y administrador
+    $lect = Read-SensoresHelper 3 600
+    if ($lect) {
+        if ($lect.cpu -and $null -ne $lect.cpu.temp) {
+            $t += [ordered]@{ Fuente = 'Sensores'; Componente = 'CPU'; Sensor = "$($lect.cpu.nombre)"; Valor = Get-Num $lect.cpu.temp; Max = $null }
+        }
+        foreach ($g in @($lect.gpus)) {
+            if ($null -ne $g.temp) { $t += [ordered]@{ Fuente = 'Sensores'; Componente = 'GPU'; Sensor = "$($g.nombre)"; Valor = Get-Num $g.temp; Max = $null } }
+            if ($null -ne $g.hotspot) { $t += [ordered]@{ Fuente = 'Sensores'; Componente = 'GPU'; Sensor = 'GPU Hot Spot'; Valor = Get-Num $g.hotspot; Max = $null } }
+        }
+        $script:SensoresEstado = [ordered]@{ Disponible = $true; Admin = [bool]$lect.admin; PawnIO = [bool]$lect.pawnio; CpuTemp = [bool]($lect.cpu -and $null -ne $lect.cpu.temp) }
+    }
     foreach ($z in @(Get-CimSeguro MSAcpi_ThermalZoneTemperature -Ns 'root\wmi')) {
         $c = [math]::Round((Get-Num $z.CurrentTemperature) / 10 - 273.15, 1)
         if ($c -gt 5 -and $c -lt 125) {
             $t += [ordered]@{ Fuente = 'ACPI'; Componente = 'Zona térmica'; Sensor = "$($z.InstanceName)"; Valor = $c; Max = $null }
         }
     }
+    # Zonas térmicas sin administrador (contador de rendimiento); se descartan los valores fijos de relleno (<30 °C)
+    if (-not @($t | Where-Object { $_.Fuente -eq 'ACPI' }).Count) {
+        foreach ($z in @(Get-CimSeguro Win32_PerfFormattedData_Counters_ThermalZoneInformation)) {
+            $k = Get-Num $z.HighPrecisionTemperature
+            $c = if ($k -gt 0) { [math]::Round($k / 10 - 273.15, 1) } else { [math]::Round((Get-Num $z.Temperature) - 273.15, 1) }
+            if ($c -ge 30 -and $c -lt 125) { $t += [ordered]@{ Fuente = 'ACPI'; Componente = 'Zona térmica'; Sensor = "$($z.Name)"; Valor = $c; Max = $null } }
+        }
+    }
     return @($t)
+}
+
+function Get-RutaSensores {
+    $exe = Join-Path (Join-Path $script:Raiz 'sensores') 'DoctorPC.Sensores.exe'
+    if ($script:EsWindows -and (Test-Path -LiteralPath $exe)) { return $exe }
+    return $null
+}
+
+# Lee unas muestras del lector de sensores y devuelve la última (o $null)
+function Read-SensoresHelper([int]$Muestras = 2, [int]$IntervaloMs = 600) {
+    $exe = Get-RutaSensores
+    if (-not $exe) { return $null }
+    try {
+        $lineas = @(& $exe --muestras $Muestras --intervalo $IntervaloMs 2>$null)
+        $ult = @($lineas | Where-Object { "$_" -like '{*' }) | Select-Object -Last 1
+        if (-not $ult) { return $null }
+        $j = $ult | ConvertFrom-Json
+        if ($j.error) { Add-Aviso "Lector de sensores: $($j.error)"; return $null }
+        return $j
+    } catch { return $null }
+}
+
+# Lector de sensores en segundo plano durante la medición de rendimiento
+function Start-SensoresFondo {
+    $exe = Get-RutaSensores
+    if (-not $exe) { return $null }
+    $f = Join-Path ([IO.Path]::GetTempPath()) ('doctorpc-sensores-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.jsonl')
+    try {
+        $p = Start-Process -FilePath $exe -ArgumentList @('--intervalo', '2000', '--salida', "`"$f`"", '--padre', "$PID") -WindowStyle Hidden -PassThru
+        return [pscustomobject]@{ Proceso = $p; Archivo = $f }
+    } catch { return $null }
+}
+function Stop-SensoresFondo($S) {
+    if (-not $S) { return $null }
+    try { if (-not $S.Proceso.HasExited) { Stop-Process -Id $S.Proceso.Id -Force -ErrorAction SilentlyContinue } } catch { }
+    Start-Sleep -Milliseconds 300
+    $datos = @()
+    try { $datos = @(Get-Content -LiteralPath $S.Archivo -Encoding UTF8 -ErrorAction Stop | Where-Object { "$_" -like '{*' } | ForEach-Object { try { $_ | ConvertFrom-Json } catch { } }) } catch { }
+    Remove-Item -LiteralPath $S.Archivo -Force -ErrorAction SilentlyContinue
+    if (-not $datos.Count) { return $null }
+    $cpu = @($datos | ForEach-Object { if ($_.cpu) { $_.cpu.temp } } | Where-Object { $null -ne $_ } | ForEach-Object { [double]$_ })
+    $gpu = @($datos | ForEach-Object { @($_.gpus) | Where-Object { $null -ne $_.temp } | ForEach-Object { [double]$_.temp } | Measure-Object -Maximum | ForEach-Object { $_.Maximum } })
+    $hot = @($datos | ForEach-Object { @($_.gpus) | Where-Object { $null -ne $_.hotspot } | ForEach-Object { [double]$_.hotspot } | Measure-Object -Maximum | ForEach-Object { $_.Maximum } })
+    $r = [ordered]@{ Muestras = $datos.Count }
+    if ($cpu.Count) { $r.CpuProm = [math]::Round(($cpu | Measure-Object -Average).Average, 1); $r.CpuMax = [math]::Round(($cpu | Measure-Object -Maximum).Maximum, 1) }
+    if ($gpu.Count) { $r.GpuProm = [math]::Round(($gpu | Measure-Object -Average).Average, 1); $r.GpuMax = [math]::Round(($gpu | Measure-Object -Maximum).Maximum, 1) }
+    if ($hot.Count) { $r.HotspotMax = [math]::Round(($hot | Measure-Object -Maximum).Maximum, 1) }
+    return $r
+}
+
+# Ajustes de Windows que influyen en el rendimiento en juegos
+function Get-AjustesJuego {
+    $r = [ordered]@{}
+    try { $r.ModoJuego = ((Get-ItemProperty 'HKCU:\Software\Microsoft\GameBar' -Name AutoGameModeEnabled -ErrorAction Stop).AutoGameModeEnabled -ne 0) } catch { $r.ModoJuego = $true }
+    try { $r.Hags = ((Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' -Name HwSchMode -ErrorAction Stop).HwSchMode -eq 2) } catch { $r.Hags = $null }
+    try { $r.GrabacionFondo = ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\GameDVR' -Name HistoricalCaptureEnabled -ErrorAction Stop).HistoricalCaptureEnabled -eq 1) } catch { $r.GrabacionFondo = $false }
+    try { $r.CapturaXbox = ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\GameDVR' -Name AppCaptureEnabled -ErrorAction Stop).AppCaptureEnabled -eq 1) } catch { $r.CapturaXbox = $null }
+    try {
+        $dg = Get-CimInstance -Namespace 'root\Microsoft\Windows\DeviceGuard' -ClassName Win32_DeviceGuard -ErrorAction Stop
+        $r.IntegridadMemoria = (@($dg.SecurityServicesRunning) -contains 2)
+    } catch { $r.IntegridadMemoria = $null }
+    $amd = @('C:\Program Files\AMD\CNext\CNext\RadeonSoftware.exe') | Where-Object { Test-Path -LiteralPath $_ }
+    $r.AmdSoftware = [bool]$amd
+    $r.NvidiaApp = [bool](@('C:\Program Files\NVIDIA Corporation\NVIDIA app\CEF\NVIDIA app.exe', 'C:\Program Files\NVIDIA Corporation\NVIDIA App\CEF\NVIDIA App.exe') | Where-Object { Test-Path -LiteralPath $_ })
+    return $r
 }
 
 function Get-EventosWindows([int]$Dias = 30) {
@@ -1048,7 +1133,7 @@ function Get-Contexto($D) {
     elseif ($canales.Count -eq 1) { $c.RamCanal = 'Simple (módulos en el mismo canal)' }
     else { $c.RamCanal = 'Probablemente doble' }
     $c.RamTamanosMixtos = (@($mods | ForEach-Object { $_.CapacidadGB } | Select-Object -Unique).Count -gt 1)
-    $c.RamBajoVelocidad = (@($mods | Where-Object { (Get-Num $_.MHzActual) -gt 0 -and (Get-Num $_.MHz) -gt 0 -and (Get-Num $_.MHzActual) -lt (Get-Num $_.MHz) * 0.85 }).Count -gt 0)
+    $c.RamBajoVelocidad = (@($mods | Where-Object { (Get-Num $_.MHzActual) -gt 0 -and (Get-Num $_.MHz) -gt 0 -and (Get-Num $_.MHzActual) -lt (Get-Num $_.MHz) * 0.95 }).Count -gt 0)
 
     # Discos
     $sysLetra = if ($D.Sistema.UnidadSistema) { "$($D.Sistema.UnidadSistema)" } else { 'C:' }
@@ -1098,6 +1183,9 @@ function Get-Contexto($D) {
     $temps = @($D.Temperaturas | Where-Object { $_ })
     $c.TempCpu = (@($temps | Where-Object { $_.Componente -eq 'CPU' } | ForEach-Object { [math]::Max((Get-Num $_.Valor), (Get-Num $_.Max)) }) | Measure-Object -Maximum).Maximum
     $c.TempGpu = (@($temps | Where-Object { $_.Componente -eq 'GPU' } | ForEach-Object { [math]::Max((Get-Num $_.Valor), (Get-Num $_.Max)) }) | Measure-Object -Maximum).Maximum
+    $c.TempGpuCore = (@($temps | Where-Object { $_.Componente -eq 'GPU' -and $_.Sensor -notmatch 'Hot ?Spot' } | ForEach-Object { [math]::Max((Get-Num $_.Valor), (Get-Num $_.Max)) }) | Measure-Object -Maximum).Maximum
+    $c.TempGpuHot = (@($temps | Where-Object { $_.Componente -eq 'GPU' -and $_.Sensor -match 'Hot ?Spot' } | ForEach-Object { [math]::Max((Get-Num $_.Valor), (Get-Num $_.Max)) }) | Measure-Object -Maximum).Maximum
+    $c.HayTempCpu = (@($temps | Where-Object { $_.Componente -eq 'CPU' }).Count -gt 0)
     $c.TempAcpi = (@($temps | Where-Object { $_.Fuente -eq 'ACPI' } | ForEach-Object { Get-Num $_.Valor }) | Measure-Object -Maximum).Maximum
 
     # Antigüedad aproximada (fecha de BIOS)
@@ -1392,30 +1480,47 @@ function Invoke-Reglas($D, $Ctx, $Juegos) {
             -Hipotesis 'Batería desgastada: dura poco y, en algunos portátiles, limita el rendimiento.' `
             -Prueba 'Genera un informe con: powercfg /batteryreport' -Solucion @('Sustituir la batería si la autonomía es importante para ti.') -Coste 'Compra'
     }
-    $tCpu = Get-Num $Ctx.TempCpu; $tGpu = Get-Num $Ctx.TempGpu; $tAcpi = Get-Num $Ctx.TempAcpi
-    if ($tCpu -ge 90 -or $tGpu -ge 87) {
-        New-Hallazgo -Id 'TEMP-ALTA' -Categoria 'Temperatura' -Severidad 'alto' -Confianza 'Alta' `
-            -Titulo 'Temperaturas muy altas' `
-            -Observacion @($(if ($tCpu) { "CPU: hasta $tCpu °C." } else { '' }), $(if ($tGpu) { "GPU: hasta $tGpu °C." } else { '' })) `
-            -Hipotesis 'Polvo, pasta térmica seca o ventiladores que no giran. El procesador baja su velocidad para protegerse (thermal throttling).' `
-            -Prueba 'Vigila la temperatura con HWiNFO mientras juegas; si sube a 90-100 °C y bajan los FPS, es throttling.' `
-            -Solucion @('Limpia el polvo de disipadores y ventiladores.', 'Cambia la pasta térmica si el equipo tiene más de 3-4 años.', 'En portátiles: base elevada y rejillas despejadas.') `
-            -Coste 'Mantenimiento'
+    $tCpu = Get-Num $Ctx.TempCpu; $tGpu = Get-Num $Ctx.TempGpuCore; $tHot = Get-Num $Ctx.TempGpuHot; $tAcpi = Get-Num $Ctx.TempAcpi
+    $limCpu = if ($Ctx.EsPortatil) { 95 } else { 90 }
+    $consejosFrio = @('Limpia el polvo de disipadores, ventiladores y filtros (aire comprimido, con el equipo apagado).', 'Cambia la pasta térmica si el equipo tiene más de 3-4 años.', $(if ($Ctx.EsPortatil) { 'Portátil: úsalo sobre una superficie dura o una base elevada y con las rejillas despejadas.' } else { 'Revisa el flujo de aire: entrada de aire por delante y salida por detrás/arriba.' }), 'Limita los FPS al refresco de tu monitor: menos trabajo, menos calor.')
+    if ($tCpu -ge $limCpu) {
+        New-Hallazgo -Id 'TEMP-CPU-ALTA' -Categoria 'Temperatura' -Severidad $(if ($tCpu -ge 98) { 'critico' } else { 'alto' }) -Confianza 'Alta' `
+            -Titulo "El procesador llega a $tCpu °C" `
+            -Observacion @("Temperatura máxima del procesador: $tCpu °C (límite recomendado: $limCpu °C).") `
+            -Hipotesis 'Por encima de ~95-100 °C el procesador baja su velocidad para protegerse (thermal throttling): pierdes rendimiento y aparecen tirones.' `
+            -Prueba 'Mira la sección Temperaturas de Doctor PC mientras juegas: si sube a 95 °C o más y bajan los FPS, es throttling.' `
+            -Solucion $consejosFrio -Coste 'Mantenimiento'
     }
-    elseif ($tAcpi -ge 85) {
+    if ($tGpu -ge 87) {
+        New-Hallazgo -Id 'TEMP-GPU-ALTA' -Categoria 'Temperatura' -Severidad $(if ($tGpu -ge 93) { 'critico' } else { 'alto' }) -Confianza 'Alta' `
+            -Titulo "La tarjeta gráfica llega a $tGpu °C" `
+            -Observacion @("Temperatura máxima del núcleo de la GPU: $tGpu °C.") `
+            -Hipotesis 'La gráfica reduce su frecuencia al calentarse: menos FPS y más ruido. Suele ser polvo, una curva de ventilador muy silenciosa o poca ventilación en la caja.' `
+            -Prueba 'Vigila la temperatura en el overlay de Doctor PC mientras juegas.' `
+            -Solucion @('Limpia el disipador y los ventiladores de la gráfica.', 'Sube la curva de ventilador en el software de la gráfica (AMD Software o MSI Afterburner).', 'Limita los FPS (Radeon Chill o el limitador del juego).', 'Una pequeña reducción de voltaje (undervolt) baja 5-10 °C sin perder rendimiento.') -Coste 'Mantenimiento'
+    }
+    if ($tHot -gt 0 -and $tGpu -gt 0 -and ($tHot - $tGpu) -ge 20 -and $tHot -ge 95) {
+        New-Hallazgo -Id 'TEMP-GPU-HOTSPOT' -Categoria 'Temperatura' -Severidad 'medio' -Confianza 'Media' `
+            -Titulo "Diferencia grande entre núcleo y punto caliente de la GPU ($tGpu °C / $tHot °C)" `
+            -Observacion @("Núcleo: $tGpu °C. Punto caliente (hotspot): $tHot °C. Diferencia: $([math]::Round($tHot - $tGpu)) °C.") `
+            -Hipotesis 'Una diferencia mayor de 20-25 °C suele indicar pasta térmica seca o mal repartida en la GPU.' `
+            -Prueba 'Compara con la misma prueba tras limpiar: si la diferencia sigue, la pasta térmica es la causa.' `
+            -Solucion @('Cambiar la pasta térmica de la tarjeta gráfica (y revisar los pads). Si no tienes experiencia, mejor un técnico.') -Coste 'Mantenimiento'
+    }
+    if (-not $Ctx.HayTempCpu -and $tAcpi -ge 85) {
         New-Hallazgo -Id 'TEMP-ACPI' -Categoria 'Temperatura' -Severidad 'medio' -Confianza 'Baja' `
             -Titulo "Zona térmica a $tAcpi °C" -Observacion @("Sensor ACPI: $tAcpi °C (es un sensor aproximado).") `
             -Hipotesis 'Posible calentamiento del equipo.' `
-            -Prueba 'Confirma con LibreHardwareMonitor o HWiNFO (sensores reales del CPU).' `
+            -Prueba 'Activa los sensores avanzados de Doctor PC para leer la temperatura real del procesador.' `
             -Solucion @('Si se confirma: limpieza y pasta térmica.') -Coste 'Mantenimiento'
     }
-    if (@($D.Temperaturas).Count -eq 0) {
+    if (-not $Ctx.HayTempCpu) {
         New-Hallazgo -Id 'TEMP-SIN-SENSORES' -Categoria 'Temperatura' -Severidad 'info' -Confianza 'Alta' `
-            -Titulo 'No se pudieron leer temperaturas del procesador' `
-            -Observacion @('Windows no expone sensores de CPU/GPU sin herramientas adicionales.') `
-            -Hipotesis 'Sin temperaturas no se puede descartar el sobrecalentamiento.' `
-            -Prueba 'Abre LibreHardwareMonitor (gratuito) antes de ejecutar Doctor PC: Doctor PC leerá sus sensores automáticamente.' `
-            -Solucion @('Descarga LibreHardwareMonitor desde su página oficial en GitHub, ábrelo como administrador y vuelve a ejecutar Doctor PC.')
+            -Titulo 'No se pudo leer la temperatura del procesador' `
+            -Observacion @($(if ($Ctx.TempGpuCore) { "La temperatura de la gráfica sí se leyó ($($Ctx.TempGpuCore) °C)." } else { 'Windows no expone los sensores del procesador sin un controlador.' })) `
+            -Hipotesis 'Sin la temperatura del procesador no se puede descartar el sobrecalentamiento.' `
+            -Prueba 'En la app Doctor PC: Temperaturas > Activar la temperatura del procesador.' `
+            -Solucion @('Instala el controlador gratuito PawnIO (firmado y de código abierto; lo usan LibreHardwareMonitor y FanControl) y activa los sensores avanzados en Doctor PC.')
     }
 
     # ------------------------------------------------ Muestreo
@@ -1676,6 +1781,24 @@ function Invoke-Reglas($D, $Ctx, $Juegos) {
     return @($script:ListaHallazgos | Sort-Object { $orden[$_.Severidad] }, { $_.Categoria })
 }
 
+function Get-Perfil($D, $Ctx) {
+    $g = $Ctx.Gpu
+    $gRaw = if ($g) { @($D.Gpus | Where-Object { $_.Nombre -eq $g.Nombre }) | Select-Object -First 1 } else { $null }
+    $mod = @($D.Ram.Modulos)[0]
+    [ordered]@{
+        Cpu = "$($D.Cpu.Nombre)"; CpuFabricante = "$($D.Cpu.Fabricante)"; CpuIndice = $Ctx.CpuIndice; CpuPlataforma = $Ctx.CpuPlataforma; CpuGeneracion = $Ctx.CpuGeneracion
+        Nucleos = $D.Cpu.Nucleos; Hilos = $D.Cpu.Hilos; CpuMHz = $D.Cpu.MHzMax
+        Gpu = if ($g) { $g.Nombre } else { '' }; GpuIndice = $Ctx.GpuIndice; GpuFabricante = if ($g) { $g.Fabricante } else { '' }; VramGB = if ($g) { $g.VramGB } else { $null }
+        GpuIntegrada = if ($g) { [bool]$g.Integrada } else { $true }; SoloIntegrada = [bool]$Ctx.SoloIntegrada; TieneHibrida = [bool]$Ctx.TieneHibrida
+        Gpus = @($Ctx.Gpus | ForEach-Object { $_.Nombre })
+        RamGB = $Ctx.RamCmp; RamTipo = $Ctx.RamTipo; RamMHz = $Ctx.RamMHz; RamMHzActual = if ($mod) { $mod.MHzActual } else { $null }; RamModulos = $Ctx.RamModulos; RamCanal = $Ctx.RamCanal; RamBajoVelocidad = [bool]$Ctx.RamBajoVelocidad; RamLibres = $Ctx.RamLibres
+        SistemaEnHDD = [bool]$Ctx.SistemaEnHDD; HaySSD = [bool]$Ctx.HaySSD; EsPortatil = [bool]$Ctx.EsPortatil; EsOEM = [bool]$Ctx.EsOEM; AniosEquipo = $Ctx.AniosEquipo
+        Resolucion = if ($gRaw) { $gRaw.Resolucion } else { '' }; Hz = if ($gRaw) { $gRaw.Hz } else { $null }
+        Windows = "$($D.Sistema.Windows)"; Build = $D.Sistema.Build; PlanEnergia = "$($D.Sistema.PlanEnergia)"; Placa = "$($D.Sistema.Placa)"
+        TempCpu = $Ctx.TempCpu; TempGpu = $Ctx.TempGpuCore; TempGpuHot = $Ctx.TempGpuHot
+    }
+}
+
 function Get-PuntuacionSalud($Hallazgos) {
     $pen = 0
     foreach ($h in $Hallazgos) {
@@ -1863,6 +1986,10 @@ function New-PlanMejora($D, $Ctx, $Juegos, $Hallazgos, [double]$Presupuesto, [bo
                 $compat += 'Necesitarás pasta térmica nueva al cambiarlo.'
                 $imp = if ($limCpuMedido -or ($maxMinCpu -gt 0 -and $ci -lt $maxMinCpu)) { 7 } else { 5 }
                 & $add 'CPU' $op.nombre (Get-PrecioOpcion $op $Usados) $imp 'El procesador limita los juegos detectados o a tu tarjeta gráfica.' $compat
+            }
+            elseif ($Ctx.CpuPlataforma -match 'LGA1151$|LGA1150|LGA1155|LGA1156|LGA775|AM3') {
+                $reusa = if ($Ctx.RamTipo -eq 'DDR4') { 'Tu RAM DDR4 se puede reutilizar: el salto típico es Ryzen 5 5600 + placa B550 (unos US$150-200 usados).' } else { 'Habría que cambiar también la RAM.' }
+                [void]$bloq.Add([pscustomobject]@{ Nombre = 'Cambiar solo el procesador'; Motivo = "Tu procesador ya es de lo mejor que admite su placa ($($Ctx.CpuPlataforma)). Para ganar rendimiento de CPU hay que cambiar placa y procesador. $reusa" })
             }
         }
     }
@@ -2364,7 +2491,7 @@ else {
     Set-Paso 22 'Temperaturas';              $D.Temperaturas = @(Get-Temperaturas)
     Set-Paso 25 'Registros de Windows (30 días)'; $D.Eventos = Get-EventosWindows 30
     Set-Paso 33 'Dispositivos y drivers';    $D.Dispositivos = @(Get-DispositivosConError)
-    Set-Paso 36 'Programas de inicio';       $D.Inicio = @(Get-ProgramasInicio)
+    Set-Paso 36 'Programas de inicio';       $D.Inicio = @(Get-ProgramasInicio); $D.Ajustes = Get-AjustesJuego
     if ($SinJuegos) { $D.Juegos = @() }
     else { Set-Paso 39 'Buscando juegos (Steam, Epic, GOG, Ubisoft, EA, Riot, Xbox y tus carpetas)'; $D.Juegos = @(Get-Juegos $CarpetasJuegos) }
     if (-not $ModoApp) { Write-Ok "$(@($D.Juegos).Count) juego(s) encontrados." }
@@ -2383,10 +2510,14 @@ else {
             Start-Sleep -Milliseconds 500
         }
         if ($ModoApp) { Send-Evento 'AVISO' @('Midiendo tu partida. Sigue jugando con normalidad.') }
+        $sf = Start-SensoresFondo
         $D.Muestreo = Invoke-Muestreo $ModoJuego $true
+        $D.Muestreo.Temps = Stop-SensoresFondo $sf
     } else {
         Set-Paso 48 "Midiendo el rendimiento en reposo ($Muestreo s). No uses el PC mientras tanto."
+        $sf = Start-SensoresFondo
         $D.Muestreo = Invoke-Muestreo $Muestreo $false
+        $D.Muestreo.Temps = Stop-SensoresFondo $sf
     }
     if ($Anonimo) {
         $D.Equipo = 'PC'; $D.Sistema.Equipo = 'PC'
@@ -2394,6 +2525,14 @@ else {
     } else {
         foreach ($jg in @($D.Juegos)) { $jg.Ruta = Format-RutaPrivada $jg.Ruta }
     }
+    $mt = $D.Muestreo.Temps
+    if ($mt) {
+        $quien = if ($D.Muestreo.ModoJuego) { 'durante el juego' } else { 'durante la medición' }
+        if ($mt.CpuMax) { $D.Temperaturas += [ordered]@{ Fuente = 'Sensores'; Componente = 'CPU'; Sensor = "Media / máxima $quien"; Valor = $mt.CpuProm; Max = $mt.CpuMax } }
+        if ($mt.GpuMax) { $D.Temperaturas += [ordered]@{ Fuente = 'Sensores'; Componente = 'GPU'; Sensor = "Media / máxima $quien"; Valor = $mt.GpuProm; Max = $mt.GpuMax } }
+        if ($mt.HotspotMax) { $D.Temperaturas += [ordered]@{ Fuente = 'Sensores'; Componente = 'GPU'; Sensor = "GPU Hot Spot (máxima $quien)"; Valor = $mt.HotspotMax; Max = $mt.HotspotMax } }
+    }
+    $D.Sensores = $script:SensoresEstado
     $D.Avisos = @($script:Avisos)
 }
 
@@ -2414,7 +2553,7 @@ $rutaHtml = Join-Path $Salida "$base.html"
 $rutaJson = Join-Path $Salida "$base.json"
 $html = New-InformeHtml $D $Ctx $Hallazgos $Juegos $Plan $Salud $Resumen
 [System.IO.File]::WriteAllText($rutaHtml, $html, (New-Object System.Text.UTF8Encoding($false)))
-$export = [ordered]@{ DoctorPC = $script:Version; Datos = $D; Diagnostico = [ordered]@{ Salud = $Salud; Hallazgos = $Hallazgos; Juegos = $Juegos; Plan = $Plan; Pais = $script:PaisNombre; Resumen = $Resumen; Tecnico = (Get-Tecnico) } }
+$export = [ordered]@{ DoctorPC = $script:Version; Datos = $D; Diagnostico = [ordered]@{ Salud = $Salud; Hallazgos = $Hallazgos; Juegos = $Juegos; Plan = $Plan; Pais = $script:PaisNombre; Resumen = $Resumen; Tecnico = (Get-Tecnico); Perfil = (Get-Perfil $D $Ctx) } }
 [System.IO.File]::WriteAllText($rutaJson, ($export | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding($false)))
 
 Send-Evento 'RESULTADO' @($rutaHtml, $rutaJson, $Salud.Puntos, $Salud.Etiqueta)

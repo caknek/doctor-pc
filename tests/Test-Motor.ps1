@@ -48,8 +48,9 @@ Test-Paso 'Los catálogos JSON son válidos' {
 
 $esperado = @{
     'oficina-hdd'      = @('DISCO-SISTEMA-HDD', 'RAM-CANAL-SIMPLE', 'WIN-PANTALLAZOS')
-    'portatil-igpu'    = @('TEMP-ALTA', 'JUEGO-LIMITE-GPU', 'RAM-CANAL-SIMPLE')
+    'portatil-igpu'    = @('TEMP-CPU-ALTA', 'JUEGO-LIMITE-GPU', 'RAM-CANAL-SIMPLE')
     'gamer-limite-cpu' = @('JUEGO-LIMITE-CPU', 'JUEGO-LIMITE-DISCO', 'RAM-XMP')
+    'sobrino-i7-7700-rx6600' = @('JUEGO-LIMITE-CPU', 'TEMP-GPU-HOTSPOT', 'RAM-XMP', 'JUEGOS-EN-HDD')
 }
 foreach ($f in Get-ChildItem (Join-Path $PSScriptRoot 'equipos') -Filter *.json) {
     Test-Paso "Diagnóstico del equipo de prueba '$($f.BaseName)'" {

@@ -1,7 +1,7 @@
 {
   "name": "doctor-pc",
   "productName": "Doctor PC",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Doctor PC: diagnóstico explicable y gratuito para Windows",
   "keywords": [
     "diagnostico",
@@ -40,6 +40,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "overlay-preload.js",
       "renderer/**/*",
       "package.json"
     ],

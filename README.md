@@ -21,6 +21,11 @@ Ve a **[Releases](https://github.com/caknek/doctor-pc/releases/latest)** y desca
 - **Windows:** pantallazos azules (con su significado), apagados inesperados, errores de hardware, drivers con fallos, programas de inicio.
 - **Plan de mejora:** primero lo gratis, después las compras que más rinden por dólar. Antes de sugerir una pieza revisa la compatibilidad: socket, tipo de RAM, portátil, fuente.
 - **Monitor en vivo:** CPU, RAM, GPU, discos, red, temperatura y los procesos que más consumen, cada segundo.
+- **Temperaturas y alertas:** procesador y gráfica en tiempo real (punto caliente, memoria, ventiladores, consumo), avisos si pasan tu límite y consejos de refrigeración para tu equipo.
+- **Overlay en juegos:** al estilo MSI Afterburner, con CPU, GPU, RAM y VRAM, temperatura y una gráfica pequeña bajo cada número. Se activa solo al detectar un juego (ventana o pantalla completa sin bordes). `Ctrl+Mayús+O` lo muestra u oculta.
+- **Qué puedes hacer con tu PC:** juegos, streaming, IA local, emulación, VR, edición y más, según tu hardware real y con programas gratuitos.
+- **Optimizar juegos:** ajustes del driver (AMD Adrenalin, NVIDIA, Intel), de Windows, del hardware (XMP, SSD) y de cada juego, según el equilibrio entre tu procesador y tu gráfica.
+- **Sonidos:** al escanear, al terminar y en las alertas.
 - **Limpieza segura:** mide primero cuánto puedes liberar (temporales, caché de navegadores, informes de error, miniaturas, papelera) y tú eliges qué borrar.
 - **Velocidad del disco:** lectura y escritura directas sin caché, con un veredicto claro: HDD, SSD SATA o NVMe.
 - **Comparar informes:** antes y después de una reparación, con lo resuelto, lo nuevo y lo que sigue igual.
@@ -31,12 +36,17 @@ Ve a **[Releases](https://github.com/caknek/doctor-pc/releases/latest)** y desca
 
 Todo se analiza en el propio PC; ningún dato sale del equipo.
 
+### Temperatura del procesador
+
+Windows no deja leer los sensores del procesador sin un controlador. Doctor PC usa [LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) (MPL-2.0) con el controlador gratuito y firmado [PawnIO](https://pawnio.eu). Instálalo y activa *Sensores avanzados* en Ajustes (pide permiso de administrador). La temperatura de la gráfica funciona sin nada extra.
+
 ## Estructura
 
 ```
 main.js, preload.js      Proceso principal de Electron (motor, informes, actualizaciones)
 renderer/                Interfaz (HTML/CSS/JS)
 engine/DoctorPC.ps1      Motor de diagnóstico (PowerShell 5.1+, también funciona solo)
+sensores/                Lector de sensores en C# (LibreHardwareMonitorLib), se compila en CI
 engine/datos/            Catálogos editables: precios, requisitos de juegos, índices de hardware
 tests/                   Pruebas del motor y de la app + equipos de ejemplo
 .github/workflows/       Pruebas en cada push y publicación automática de versiones

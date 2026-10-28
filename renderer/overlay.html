@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Doctor PC — overlay</title>
+  <style>
+    html,body{margin:0;background:transparent;overflow:hidden;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none}
+    .panel{margin:0;padding:8px 10px 6px;border-radius:10px;background:rgba(8,10,18,.62);border:1px solid rgba(255,255,255,.08);color:#fff;
+      text-shadow:0 1px 2px rgba(0,0,0,.9);box-sizing:border-box;width:100%;transition:box-shadow .3s}
+    .panel.alerta{box-shadow:0 0 0 2px #ef4444,0 0 18px rgba(239,68,68,.55);animation:latir 1s ease-in-out 6}
+    .cab{display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:3px}
+    .cab b{color:#7dd3fc;font-weight:700;letter-spacing:.4px}
+    .cab span{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .fila{display:grid;grid-template-columns:38px 1fr;align-items:center;column-gap:6px;margin-top:4px}
+    .eti{font-size:11.5px;font-weight:800;letter-spacing:.5px}
+    .eti.cpu{color:#60a5fa}.eti.gpu{color:#4ade80}.eti.ram{color:#fbbf24}.eti.vram{color:#c084fc}
+    .vals{display:flex;gap:10px;align-items:baseline;font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;line-height:1.05}
+    .vals small{font-size:10px;font-weight:600;color:rgba(255,255,255,.6);margin-left:1px}
+    .vals .t{margin-left:auto}
+    .t.calido{color:#fde047}.t.caliente{color:#fb923c}.t.peligro{color:#f87171;animation:parpadeo 1s steps(2) infinite}
+    svg{grid-column:2;width:100%;height:13px;display:block;margin-top:1px}
+    svg polyline{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+    svg polygon{opacity:.18;stroke:none}
+    body.pequeno .panel{padding:6px 8px 5px}
+    body.pequeno .vals{font-size:13px}
+    body.pequeno svg{height:10px}
+    body.pequeno .cab{font-size:9px}
+    @keyframes parpadeo{50%{opacity:.45}}
+    @keyframes latir{50%{box-shadow:0 0 0 3px #ef4444,0 0 26px rgba(239,68,68,.8)}}
+  </style>
+</head>
+<body>
+  <div class="panel" id="panel">
+    <div class="cab"><b>Doctor PC</b><span id="juego"></span></div>
+    <div class="fila"><span class="eti cpu">CPU</span><div class="vals"><span id="cpu">–<small>%</small></span><span class="t" id="cpuT">–</span></div><svg id="g-cpu" viewBox="0 0 100 13" preserveAspectRatio="none"></svg></div>
+    <div class="fila"><span class="eti gpu">GPU</span><div class="vals"><span id="gpu">–<small>%</small></span><span class="t" id="gpuT">–</span></div><svg id="g-gpu" viewBox="0 0 100 13" preserveAspectRatio="none"></svg></div>
+    <div class="fila"><span class="eti ram">RAM</span><div class="vals"><span id="ram">–</span><span class="t" id="ramP">–</span></div><svg id="g-ram" viewBox="0 0 100 13" preserveAspectRatio="none"></svg></div>
+    <div class="fila" id="fila-vram"><span class="eti vram">VRAM</span><div class="vals"><span id="vram">–</span><span class="t" id="vramP"></span></div><svg id="g-vram" viewBox="0 0 100 13" preserveAspectRatio="none"></svg></div>
+  </div>
+  <script src="overlay.js"></script>
+</body>
+</html>
