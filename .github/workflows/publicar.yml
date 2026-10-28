@@ -47,6 +47,11 @@ jobs:
         if: steps.version.outputs.existe == 'false'
         run: npm ci
 
+      - name: Compilar el lector de sensores
+        if: steps.version.outputs.existe == 'false'
+        shell: pwsh
+        run: ./scripts/compilar-sensores.ps1
+
       - name: Comprobar la app (incluye que la versión del motor coincida)
         if: steps.version.outputs.existe == 'false'
         run: npm test

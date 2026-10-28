@@ -23,6 +23,19 @@ jobs:
       - name: Comprobar la app
         run: npm test
 
+      - name: Compilar el lector de sensores
+        shell: pwsh
+        run: ./scripts/compilar-sensores.ps1
+
+      - name: Probar el lector de sensores
+        shell: pwsh
+        run: |
+          $l = & ./engine/sensores/DoctorPC.Sensores.exe --muestras 2 --intervalo 500
+          $l | ForEach-Object { Write-Host $_ }
+          $j = ($l | Where-Object { $_ -like '{*' } | Select-Object -Last 1) | ConvertFrom-Json
+          if ($j.error) { throw "Error del lector: $($j.error)" }
+          if ($null -eq $j.cpu) { throw 'El lector no devolvió datos de CPU' }
+
       - name: Probar el motor con Windows PowerShell 5.1 (incluye un análisis real del equipo)
         shell: powershell
         run: ./tests/Test-Motor.ps1
