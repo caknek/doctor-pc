@@ -122,5 +122,13 @@ ok('Todos los iconos usados en la interfaz existen', () => {
   if (faltan.length) throw new Error('faltan: ' + faltan.join(', '));
 });
 
+ok('La interfaz no modifica el puente con Windows (contextBridge es de solo lectura)', () => {
+  for (const f of ['renderer/app.js', 'renderer/overlay.js']) {
+    const js = fs.readFileSync(path.join(raiz, f), 'utf8');
+    const m = js.match(/\b(api|window\.doctor|window\.overlay)\.[A-Za-z_$]+\s*=(?!=)/);
+    if (m) throw new Error(`${f}: no se puede asignar ${m[0]}`);
+  }
+});
+
 if (fallos) { console.log(fallos + ' comprobación(es) fallaron.'); process.exit(1); }
 console.log('Todas las comprobaciones de la app pasaron.');

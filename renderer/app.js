@@ -726,6 +726,7 @@ const CAT_PROG = {
 const tamProg = p => (p.TamanoReal != null && p.TamanoReal > 0 ? p.TamanoReal : (p.TamanoEstimado || 0));
 function prepararProgramas() {
   if (estadoP.pestana === 'instalados' && !estadoP.datos && !estadoP.cargando) cargarProgramas();
+  else if (estadoP.pestana === 'instalados' && estadoP.datos && Date.now() - (estadoP.cargadoEn || 0) > 15000) refrescarProgramas();
   if (estadoP.pestana === 'instalar') prepararInstalar();
   if (estadoP.pestana === 'espacio') prepararEspacio();
 }
@@ -742,13 +743,37 @@ async function cargarProgramas() {
   $('#pg-resumen').innerHTML = `<span class="girando">${ico('actualizar')}</span> Leyendo programas instalados…`;
   const r = await api.programas(true);
   if (!r.ok) { estadoP.cargando = false; $('#pg-lista').innerHTML = `<div class="vacio">${esc(r.mensaje)}</div>`; $('#pg-resumen').textContent = ''; return; }
-  estadoP.datos = r.datos; estadoP.midiendo = true;
+  estadoP.datos = r.datos; estadoP.midiendo = true; estadoP.cargadoEn = Date.now();
   pintarProgramas();
   const r2 = await api.programas(false);
   estadoP.cargando = false; estadoP.midiendo = false;
-  if (r2.ok) estadoP.datos = r2.datos;
+  if (r2.ok) { estadoP.datos = r2.datos; estadoP.cargadoEn = Date.now(); }
   pintarProgramas();
 }
+// Vuelve a leer la lista (rápido, conserva los tamaños ya medidos) para reflejar lo que se instaló o desinstaló fuera de Doctor PC
+async function refrescarProgramas() {
+  if (estadoP.cargando || estadoP.refrescando) return;
+  estadoP.refrescando = true;
+  const r = await api.programas(true);
+  estadoP.refrescando = false;
+  if (!r.ok) return;
+  estadoP.datos = r.datos; estadoP.cargadoEn = Date.now();
+  if (estado.vista === 'programas') { pintarProgramas(); if (estadoP.pestana === 'instalar') pintarCatalogo(); }
+  // programas nuevos sin medir: medir en segundo plano
+  if (r.datos.Programas.some(p => p.Carpeta && p.TamanoReal == null) && !estadoP.midiendo) {
+    estadoP.midiendo = true; if (estado.vista === 'programas') pintarProgramas();
+    const r2 = await api.programas(false);
+    estadoP.midiendo = false;
+    if (r2.ok) { estadoP.datos = r2.datos; estadoP.cargadoEn = Date.now(); }
+    if (estado.vista === 'programas') pintarProgramas();
+  }
+}
+let ultimoFoco = 0;
+window.addEventListener('focus', () => {
+  if (estado.vista !== 'programas' || !estadoP.datos || Date.now() - ultimoFoco < 5000) return;
+  ultimoFoco = Date.now();
+  refrescarProgramas();
+});
 function filtrarProgramas() {
   const q = $('#pg-buscar').value.trim().toLowerCase();
   const cat = $('#pg-cat').value;
@@ -827,7 +852,7 @@ function pintarProgramas() {
     if (!p) return;
     const b = el.querySelector('[data-desinstalar]'); if (b) b.onclick = () => desinstalarPrograma(p);
     const c = el.querySelector('[data-carpeta]'); if (c) c.onclick = () => api.abrirCarpetaPrograma(p.Id);
-    const d = el.querySelector('[data-dejar]'); if (d) d.onclick = () => { api.dejarDeEsperar(p.Id); estadoP.esperando.delete(p.Id); pintarProgramas(); };
+    const d = el.querySelector('[data-dejar]'); if (d) d.onclick = () => { api.dejarDeEsperar(p.Id); estadoP.esperando.delete(p.Id); refrescarProgramas(); pintarProgramas(); };
   });
   cargarIconos();
 }
@@ -835,10 +860,18 @@ const obsIconos = 'IntersectionObserver' in window ? new IntersectionObserver(en
   if (!en.isIntersecting) return;
   obsIconos.unobserve(en.target);
   const id = en.target.closest('.pg-item').dataset.id;
-  const url = await api.iconoPrograma(id);
+  const url = await iconoDe(id);
   if (url) { en.target.innerHTML = `<img src="${url}" alt="">`; en.target.classList.add('con-icono'); }
 }), { rootMargin: '200px' }) : null;
 const iconosVistos = new Map();
+// El puente con Windows (window.doctor) no se puede modificar: la caché de iconos va aparte
+async function iconoDe(id) {
+  if (iconosVistos.has(id)) return iconosVistos.get(id);
+  let u = null;
+  try { u = await api.iconoPrograma(id); } catch (e) { u = null; }
+  iconosVistos.set(id, u);
+  return u;
+}
 function cargarIconos() {
   $$('#pg-lista .pg-ic[data-icono="1"]').forEach(el => {
     const id = el.closest('.pg-item').dataset.id;
@@ -846,7 +879,6 @@ function cargarIconos() {
     if (obsIconos) obsIconos.observe(el);
   });
 }
-if (api.iconoPrograma) { const orig = api.iconoPrograma; api.iconoPrograma = async id => { if (iconosVistos.has(id)) return iconosVistos.get(id); const u = await orig(id); iconosVistos.set(id, u); return u; }; }
 ['#pg-buscar', '#pg-cat', '#pg-orden', '#pg-ocultar'].forEach(s => $(s).addEventListener(s === '#pg-buscar' ? 'input' : 'change', () => pintarProgramas()));
 $('#pg-recargar').onclick = () => { estadoP.datos = null; cargarProgramas(); };
 
@@ -877,10 +909,11 @@ function quitarPrograma(id) {
 api.onProgramas(async d => {
   if (d.estado === 'esperando') return;
   estadoP.esperando.delete(d.id);
-  if (d.estado === 'tiempo') { toast(`No se detectó que ${d.nombre} terminara de desinstalarse.`, 6000); pintarProgramas(); return; }
+  if (d.estado === 'tiempo') { toast(`No se detectó que ${d.nombre} terminara de desinstalarse.`, 6000); refrescarProgramas(); return; }
   if (d.estado === 'desinstalado') {
     sonar('exito');
     quitarPrograma(d.id);
+    setTimeout(refrescarProgramas, 800);
     if (!d.restos) { toast(`${d.nombre} desinstalado sin dejar restos.`, 5000); return; }
     const ok = await modal({
       titulo: `${d.nombre} se desinstaló`,
@@ -1161,6 +1194,7 @@ async function perfilLocal() {
 }
 
 // ================================================================== temperaturas
+let tAlertaGlobal = null;
 const histTemp = [];
 let tempsPerfil = null, tempsEstadoCache = null;
 function tarjetaTemp(id, titulo, icono) {
@@ -1284,7 +1318,7 @@ api.onAlerta(a => {
   if (!g) { g = document.createElement('div'); g.id = 'alerta-global'; g.className = 'alerta-global'; document.body.appendChild(g); }
   g.innerHTML = `<div class="banner-alerta">${html}</div>`;
   $('#btn-ver-alerta').onclick = () => { g.innerHTML = ''; mostrar('temperaturas'); };
-  clearTimeout(api._tAlerta); api._tAlerta = setTimeout(() => { g.innerHTML = ''; }, 15000);
+  clearTimeout(tAlertaGlobal); tAlertaGlobal = setTimeout(() => { g.innerHTML = ''; }, 15000);
   if (estado.vista === 'temperaturas') api.tempsEstado().then(e => pintarAlertas(e.alertas || []));
 });
 api.onIr(v => mostrar(v));
