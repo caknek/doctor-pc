@@ -26,7 +26,10 @@ Ve a **[Releases](https://github.com/caknek/doctor-pc/releases/latest)** y desca
 - **Qué puedes hacer con tu PC:** juegos, streaming, IA local, emulación, VR, edición y más, según tu hardware real y con programas gratuitos.
 - **Optimizar juegos:** ajustes del driver (AMD Adrenalin, NVIDIA, Intel), de Windows, del hardware (XMP, SSD) y de cada juego, según el equilibrio entre tu procesador y tu gráfica.
 - **Sonidos:** al escanear, al terminar y en las alertas.
-- **Limpieza segura:** mide primero cuánto puedes liberar (temporales, caché de navegadores, informes de error, miniaturas, papelera) y tú eliges qué borrar.
+- **Programas:** todo lo instalado separado por disco, con tamaño real y ubicación. Desinstala con el desinstalador original, avisa antes de quitar componentes o controladores y ofrece enviar los restos a la papelera. Incluye apps de Microsoft Store y juegos de Epic.
+- **Instalar programas:** catálogo de programas gratuitos verificados que se instalan con winget.
+- **Qué ocupa espacio:** carpetas y archivos más grandes de cada unidad.
+- **Limpieza segura:** mide primero sin borrar nada. Cada categoría explica qué es, qué pasa si la borras y qué no se toca (contraseñas, sesiones, conversaciones de apps como Claude o Discord, partidas guardadas). Lo personal, como los instaladores viejos de Descargas, va a la papelera.
 - **Velocidad del disco:** lectura y escritura directas sin caché, con un veredicto claro: HDD, SSD SATA o NVMe.
 - **Comparar informes:** antes y después de una reparación, con lo resuelto, lo nuevo y lo que sigue igual.
 - **Para técnicos:** tu ficha en los informes, exportación a PDF y envío del resumen por WhatsApp.

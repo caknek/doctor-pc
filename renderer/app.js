@@ -138,6 +138,7 @@ function mostrar(vista) {
   if (vista === 'reparaciones') pintarReparaciones();
   if (vista === 'limpieza' && !estadoL.datos && !estadoL.ocupado) medirLimpieza();
   if (vista === 'disco') prepararDisco();
+  if (vista === 'programas') prepararProgramas();
 }
 $$('[data-vista]').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.vista)));
 
@@ -565,68 +566,472 @@ api.onMonitor(m => {
 });
 
 // ================================================================== limpieza
-const estadoL = { datos: null, sel: new Set(), ocupado: false };
-const ICONO_LIMPIEZA = { temp_usuario: 'carpeta', temp_windows: 'windows', navegadores: 'red', errores: 'informe', miniaturas: 'paleta', papelera: 'papelera' };
+const estadoL = { datos: null, sel: new Set(), abiertos: new Set(), archivos: new Set(), ocupado: false };
+const ICONO_LIMPIEZA = { temp_usuario: 'carpeta', temp_windows: 'windows', navegadores: 'red', apps_cache: 'capas', errores: 'informe', miniaturas: 'paleta', windows_update: 'actualizar', entrega: 'red', volcados_sistema: 'alerta', registros_windows: 'informe', shaders: 'juego', papelera: 'papelera', descargas: 'descarga', windows_old: 'windows', hibernacion: 'rayo' };
 async function medirLimpieza() {
   estadoL.ocupado = true;
   $('#l-resultado').innerHTML = '';
-  $('#l-lista').innerHTML = Array.from({ length: 6 }, () => '<div class="esqueleto"></div>').join('');
-  $('#l-total').textContent = 'Midiendo…'; $('#btn-l-limpiar').disabled = true;
+  ['#l-seguro', '#l-revisar', '#l-info'].forEach((s, k) => { $(s).innerHTML = Array.from({ length: [5, 2, 1][k] }, () => '<div class="esqueleto"></div>').join(''); });
+  $('#l-total').textContent = 'Midiendo…'; $('#l-total-nota').textContent = ''; $('#btn-l-limpiar').disabled = true;
   const r = await api.limpieza('analizar', []);
   estadoL.ocupado = false;
-  if (!r.ok) { $('#l-lista').innerHTML = `<div class="vacio">${esc(r.mensaje)}</div>`; $('#l-total').textContent = '–'; return; }
+  if (!r.ok) { $('#l-seguro').innerHTML = `<div class="vacio">${esc(r.mensaje)}</div>`; $('#l-revisar').innerHTML = ''; $('#l-info').innerHTML = ''; $('#l-total').textContent = '–'; return; }
   estadoL.datos = r.datos;
-  estadoL.sel = new Set(r.datos.Categorias.filter(c => c.Tamano > 0 && ['temp_usuario', 'navegadores', 'errores', 'miniaturas'].includes(c.Id)).map(c => c.Id));
+  estadoL.archivos = new Set();
+  estadoL.sel = new Set(r.datos.Categorias.filter(c => c.Grupo === 'seguro' && c.Tamano > 0 && (c.Preseleccion || (c.Admin && r.datos.Admin))).map(c => c.Id));
   pintarLimpieza();
+}
+function etiquetasCat(c) {
+  const e = [];
+  if (c.Admin) e.push('<span class="etq">Pide administrador</span>');
+  if (c.Id === 'papelera') e.push('<span class="etq peligro">Permanente</span>');
+  if (c.Id === 'descargas') e.push('<span class="etq ok">Va a la papelera</span>');
+  if (c.Grupo === 'info') e.push('<span class="etq">Solo información</span>');
+  return e.join('');
+}
+function tarjetaLimpieza(c) {
+  const vacio = !(c.Tamano > 0);
+  const sel = estadoL.sel.has(c.Id);
+  const abierto = estadoL.abiertos.has(c.Id);
+  const marcable = c.Grupo !== 'info' && c.Id !== 'descargas';
+  const tam = c.Id === 'descargas' && estadoL.archivos.size
+    ? `${fmtBytes(c.Lista.filter(x => estadoL.archivos.has(x.Ruta)).reduce((a, x) => a + x.Tamano, 0))}<div class="meta">de ${fmtBytes(c.Tamano)}</div>`
+    : (vacio ? '<span class="sub">Vacío</span>' : fmtBytes(c.Tamano) + (c.Parcial ? '<div class="meta" title="Sin permiso de administrador no se puede medir todo">≈ puede ser más</div>' : ''));
+  const detalle = (c.Detalle || []).length > 1 || (c.Detalle || []).some(d => !['TEMP', 'Windows\\Temp', 'Explorador'].includes(d.Etiqueta))
+    ? `<div class="l-apps">${c.Detalle.slice(0, 12).map(d => `<span class="l-app"><b>${esc(d.Etiqueta)}</b> ${fmtBytes(d.Tamano)}</span>`).join('')}</div>` : '';
+  const abiertos = (c.Abiertos || []).length ? `<div class="l-aviso">${ico('info')}${esc(c.Abiertos.join(', '))} ${c.Abiertos.length > 1 ? 'están abiertos' : 'está abierto'}: lo que esté en uso se salta. Ciérra${c.Abiertos.length > 1 ? 'los' : 'lo'} antes para liberar todo.</div>` : '';
+  let extra = '';
+  if (c.Id === 'descargas' && c.Lista && c.Lista.length) {
+    extra = `<div class="l-archivos"><div class="l-archivos-cab"><b>Elige qué enviar a la papelera</b><button class="btn secundario chico" data-todos>${c.Lista.every(x => estadoL.archivos.has(x.Ruta)) ? 'Quitar todos' : 'Seleccionar todos'}</button></div>
+      ${c.Lista.map(x => `<label class="l-archivo"><input type="checkbox" data-ruta="${esc(x.Ruta)}" ${estadoL.archivos.has(x.Ruta) ? 'checked' : ''}><span class="nom" title="${esc(x.Ruta)}">${esc(x.Nombre)}</span><span class="etq">${esc(x.Tipo)}</span><span class="meta">${esc(x.Fecha)}</span><b>${fmtBytes(x.Tamano)}</b></label>`).join('')}</div>`;
+  }
+  if (c.Accion === 'storagesense') extra += `<div class="fila" style="margin-top:10px"><button class="btn secundario" data-accion="storagesense">${ico('externo')}Abrir Configuración de almacenamiento</button></div>`;
+  if (c.Accion === 'hibernacion_off') extra += `<div class="fila" style="margin-top:10px"><button class="btn secundario" data-accion="hibernacion_off">${ico('rayo')}Desactivar hibernación (liberar ${fmtBytes(c.Tamano)})</button></div>`;
+  if (c.Nota && c.Id !== 'descargas') extra += `<p class="sub" style="margin:8px 0 0">${esc(c.Nota)}</p>`;
+  return `<div class="item cat l-cat ${sel ? 'sel' : ''} ${vacio ? 'vacia' : ''} ${abierto ? 'abierta' : ''} grupo-${c.Grupo}" data-id="${c.Id}">
+    <div class="l-fila">
+      ${marcable ? `<input type="checkbox" ${sel ? 'checked' : ''} ${vacio ? 'disabled' : ''}>` : `<span class="l-sin-check">${c.Grupo === 'info' ? ico('info') : ''}</span>`}
+      <div class="ic-item">${ico(ICONO_LIMPIEZA[c.Id] || 'limpiar')}</div>
+      <div class="cuerpo"><b>${esc(c.Nombre)}</b>${etiquetasCat(c)}<div class="meta">${esc(c.Que)}</div></div>
+      <div class="tamano">${tam}</div>
+      <button class="btn secundario icono l-ver" title="Ver detalles">${ico('chevron')}</button>
+    </div>
+    <div class="l-detalle">
+      <div class="l-tres">
+        <div><small>Qué pasa si lo borras</small><p>${esc(c.Efecto)}</p></div>
+        <div class="no-toca"><small>${ico('candado')}Qué no se toca</small><p>${esc(c.NoToca)}</p></div>
+      </div>
+      ${abiertos}${detalle}${extra}
+    </div>
+  </div>`;
 }
 function pintarLimpieza() {
   const cats = estadoL.datos.Categorias;
-  $('#l-lista').innerHTML = cats.map(c => `<div class="item cat ${estadoL.sel.has(c.Id) ? 'sel' : ''}" data-id="${c.Id}">
-      <input type="checkbox" ${estadoL.sel.has(c.Id) ? 'checked' : ''} ${c.Tamano > 0 ? '' : 'disabled'}>
-      <div class="ic-item">${ico(ICONO_LIMPIEZA[c.Id] || 'limpiar')}</div>
-      <div class="cuerpo"><b>${esc(c.Nombre)}</b>${c.Admin ? '<span class="etq">Pide administrador</span>' : ''}${c.Id === 'papelera' ? '<span class="etq">Permanente</span>' : ''}
-        <div class="meta">${esc(c.Desc)}</div></div>
-      <div class="tamano">${c.Tamano > 0 ? fmtBytes(c.Tamano) : '<span class="sub">Vacío</span>'}${c.Parcial ? '<div class="meta">≈ parcial</div>' : ''}</div></div>`).join('');
-  escalonar($('#l-lista'));
-  $$('#l-lista .cat').forEach(el => el.onclick = ev => {
+  const grupos = { seguro: cats.filter(c => c.Grupo === 'seguro'), revisar: cats.filter(c => c.Grupo === 'revisar'), info: cats.filter(c => c.Grupo === 'info' && c.Tamano > 0) };
+  // en "seguro", lo vacío al final
+  const peso = c => (c.Tamano > 0 ? 2 : 0) + (c.Preseleccion || estadoL.sel.has(c.Id) ? 1 : 0);
+  grupos.seguro.sort((a, b) => peso(b) - peso(a) || b.Tamano - a.Tamano);
+  $('#l-seguro').innerHTML = grupos.seguro.map(tarjetaLimpieza).join('');
+  $('#l-revisar').innerHTML = grupos.revisar.map(tarjetaLimpieza).join('');
+  $('#l-info').innerHTML = grupos.info.length ? grupos.info.map(tarjetaLimpieza).join('') : '<p class="sub">No hay nada más grande que recuperar aquí.</p>';
+  ['#l-seguro', '#l-revisar', '#l-info'].forEach(s => escalonar($(s)));
+  $$('#v-limpieza .l-cat').forEach(el => {
     const c = cats.find(x => x.Id === el.dataset.id);
-    if (!c || c.Tamano <= 0) return;
-    if (estadoL.sel.has(c.Id)) estadoL.sel.delete(c.Id); else estadoL.sel.add(c.Id);
-    el.classList.toggle('sel', estadoL.sel.has(c.Id));
-    el.querySelector('input').checked = estadoL.sel.has(c.Id);
-    if (ev.target.tagName === 'INPUT') ev.preventDefault();
-    totalLimpieza();
+    el.querySelector('.l-fila').onclick = ev => {
+      if (ev.target.closest('.l-ver') || c.Grupo === 'info' || c.Id === 'descargas') { estadoL.abiertos.has(c.Id) ? estadoL.abiertos.delete(c.Id) : estadoL.abiertos.add(c.Id); el.classList.toggle('abierta'); sonar('clic'); return; }
+      if (!(c.Tamano > 0)) return;
+      if (ev.target.tagName === 'INPUT') ev.preventDefault();
+      if (estadoL.sel.has(c.Id)) estadoL.sel.delete(c.Id); else estadoL.sel.add(c.Id);
+      el.classList.toggle('sel', estadoL.sel.has(c.Id));
+      el.querySelector('input').checked = estadoL.sel.has(c.Id);
+      totalLimpieza();
+    };
+    el.querySelectorAll('.l-archivo input').forEach(chk => chk.onchange = () => { chk.checked ? estadoL.archivos.add(chk.dataset.ruta) : estadoL.archivos.delete(chk.dataset.ruta); actualizarTamDescargas(el, c); totalLimpieza(); });
+    const todos = el.querySelector('[data-todos]');
+    if (todos) todos.onclick = () => { const marcar = !c.Lista.every(x => estadoL.archivos.has(x.Ruta)); c.Lista.forEach(x => marcar ? estadoL.archivos.add(x.Ruta) : estadoL.archivos.delete(x.Ruta)); el.outerHTML = tarjetaLimpieza(c); pintarLimpieza(); };
+    el.querySelectorAll('[data-accion]').forEach(b => b.onclick = () => accionInfoLimpieza(b.dataset.accion, c));
   });
   totalLimpieza();
 }
+function actualizarTamDescargas(el, c) {
+  const n = c.Lista.filter(x => estadoL.archivos.has(x.Ruta));
+  el.querySelector('.tamano').innerHTML = n.length ? `${fmtBytes(n.reduce((a, x) => a + x.Tamano, 0))}<div class="meta">de ${fmtBytes(c.Tamano)}</div>` : fmtBytes(c.Tamano);
+  el.classList.toggle('sel', n.length > 0);
+}
+function seleccionLimpieza() {
+  const cats = estadoL.datos.Categorias.filter(c => estadoL.sel.has(c.Id));
+  const desc = estadoL.datos.Categorias.find(c => c.Id === 'descargas');
+  const archivos = desc ? desc.Lista.filter(x => estadoL.archivos.has(x.Ruta)) : [];
+  return { cats, archivos, total: cats.reduce((a, c) => a + c.Tamano, 0) + archivos.reduce((a, x) => a + x.Tamano, 0) };
+}
 function totalLimpieza() {
-  const t = estadoL.datos.Categorias.filter(c => estadoL.sel.has(c.Id)).reduce((a, c) => a + c.Tamano, 0);
-  contar($('#l-total'), t, 600, fmtBytes);
-  $('#btn-l-limpiar').disabled = !estadoL.sel.size;
+  const s = seleccionLimpieza();
+  contar($('#l-total'), s.total, 600, fmtBytes);
+  const n = s.cats.length + (s.archivos.length ? 1 : 0);
+  $('#l-total-nota').textContent = n ? ` · ${n} ${n === 1 ? 'categoría' : 'categorías'}${s.archivos.length ? ` (${s.archivos.length} archivo${s.archivos.length > 1 ? 's' : ''} a la papelera)` : ''}` : '';
+  $('#btn-l-limpiar').disabled = !n;
+}
+async function accionInfoLimpieza(accion, c) {
+  if (accion === 'storagesense') { api.abrirAjuste('almacenamiento'); return; }
+  if (accion === 'hibernacion_off') {
+    const ok = await modal({ titulo: 'Desactivar la hibernación', html: `<p>Recuperarás <b>${fmtBytes(c.Tamano)}</b> en el disco del sistema.</p><p>A cambio, el PC ya no podrá hibernar y se desactiva el <b>inicio rápido</b> (tarda unos segundos más en encender).</p><p class="sub">Se puede volver a activar en cualquier momento con <code>powercfg /hibernate on</code>. Windows pedirá permiso de administrador.</p>`, confirmar: 'Desactivar' });
+    if (!ok) return;
+    const r = await api.limpiezaAccion('hibernacion_off');
+    toast(r.mensaje, 6000);
+    if (r.ok) { sonar('exito'); medirLimpieza(); }
+  }
 }
 $('#btn-l-medir').onclick = () => medirLimpieza();
 $('#btn-l-limpiar').onclick = async () => {
-  const sel = estadoL.datos.Categorias.filter(c => estadoL.sel.has(c.Id));
+  const s = seleccionLimpieza();
+  const admin = s.cats.some(c => c.Admin) && !estadoL.datos.Admin;
   const ok = await modal({
     titulo: 'Confirmar limpieza',
-    html: `<p>Se borrarán:</p><ul>${sel.map(c => `<li><b>${esc(c.Nombre)}</b> · ${fmtBytes(c.Tamano)}</li>`).join('')}</ul>${sel.some(c => c.Id === 'papelera') ? '<p><b>Lo que está en la papelera se eliminará para siempre.</b></p>' : ''}<p class="sub">Los archivos que estén en uso se saltan sin problema. Queda anotado en el registro de cambios.</p>`,
-    confirmar: 'Limpiar', peligro: sel.some(c => c.Id === 'papelera')
+    html: `<ul class="l-confirmar">${s.cats.map(c => `<li><b>${esc(c.Nombre)}</b> · ${fmtBytes(c.Tamano)}</li>`).join('')}${s.archivos.length ? `<li><b>${s.archivos.length} instalador${s.archivos.length > 1 ? 'es' : ''} de Descargas</b> · ${fmtBytes(s.archivos.reduce((a, x) => a + x.Tamano, 0))} <span class="sub">(a la papelera)</span></li>` : ''}</ul>
+      ${s.cats.some(c => c.Id === 'papelera') ? '<p><b>Lo que está en la papelera se eliminará para siempre.</b></p>' : ''}
+      ${admin ? '<p>Windows pedirá permiso de administrador para las categorías del sistema.</p>' : ''}
+      <p class="sub">Tus archivos, contraseñas, sesiones y conversaciones no se tocan. Lo que esté en uso se salta sin problema y todo queda anotado en el registro de cambios.</p>`,
+    confirmar: 'Limpiar', peligro: s.cats.some(c => c.Id === 'papelera')
   });
   if (!ok) return;
   $('#btn-l-limpiar').disabled = true; $('#btn-l-limpiar').innerHTML = ico('limpiar') + 'Limpiando…';
-  const r = await api.limpieza('limpiar', [...estadoL.sel]);
+  let liberado = 0, borrados = 0, omitidos = 0, papelera = 0, error = null;
+  if (s.cats.length) {
+    const r = await api.limpieza('limpiar', s.cats.map(c => c.Id));
+    if (r.ok) { liberado += r.datos.Liberado; borrados += r.datos.Borrados; omitidos += r.datos.Omitidos; } else error = r.mensaje;
+  }
+  if (s.archivos.length) {
+    const r = await api.limpiezaDescargas(s.archivos.map(x => x.Ruta));
+    liberado += r.liberado || 0; papelera = r.enviados || 0;
+  }
   $('#btn-l-limpiar').innerHTML = ico('limpiar') + 'Limpiar seleccionados';
-  if (!r.ok) { toast(r.mensaje); $('#btn-l-limpiar').disabled = false; return; }
-  const d = r.datos;
+  if (error && !papelera) { toast(error); $('#btn-l-limpiar').disabled = false; return; }
   $('#l-resultado').innerHTML = `<div class="tarjeta exito"><small class="sub">Espacio liberado</small><div class="grande-num" id="l-liberado">0 MB</div>
-    <p>${d.Borrados.toLocaleString('es')} archivos eliminados${d.Omitidos ? ` · ${d.Omitidos.toLocaleString('es')} estaban en uso y se saltaron` : ''}.</p></div>`;
-  contar($('#l-liberado'), d.Liberado, 1500, fmtBytes);
+    <p>${borrados.toLocaleString('es')} archivos temporales eliminados${papelera ? ` · ${papelera} instalador${papelera > 1 ? 'es' : ''} en la papelera` : ''}${omitidos ? ` · ${omitidos.toLocaleString('es')} estaban en uso y se saltaron` : ''}.</p>${error ? `<p class="sub">${esc(error)}</p>` : ''}</div>`;
+  contar($('#l-liberado'), liberado, 1500, fmtBytes);
   $('#l-resultado').scrollIntoView({ behavior: animado() ? 'smooth' : 'auto', block: 'center' });
   sonar('exito');
-  if (d.Liberado > 50 * 1048576) confeti(110);
+  if (liberado > 50 * 1048576) confeti(110);
   estadoL.datos = null;
-  setTimeout(() => { if (estado.vista === 'limpieza') medirLimpieza().then(() => {}); }, 2500);
+  setTimeout(() => { if (estado.vista === 'limpieza') medirLimpieza(); }, 2500);
 };
+
+// ================================================================== programas
+const estadoP = { datos: null, unidad: '', cargando: false, midiendo: false, esperando: new Map(), catalogo: null, winget: null, instalando: new Map(), pestana: 'instalados', espacio: null };
+const CAT_PROG = {
+  juego: ['Juego', 'juego'], tienda: ['Tienda de juegos', 'juego'], programa: ['Programa', 'caja'], navegador: ['Navegador', 'red'], comunicacion: ['Comunicación', 'chat'],
+  multimedia: ['Multimedia', 'volumen'], oficina: ['Oficina', 'informe'], desarrollo: ['Programación', 'codigo'], seguridad: ['Seguridad', 'escudo'],
+  controlador: ['Controlador', 'cpu'], componente: ['Componente', 'capas'], windows: ['Parte de Windows', 'windows'], 'store-windows': ['Incluida con Windows', 'windows']
+};
+const tamProg = p => (p.TamanoReal != null && p.TamanoReal > 0 ? p.TamanoReal : (p.TamanoEstimado || 0));
+function prepararProgramas() {
+  if (estadoP.pestana === 'instalados' && !estadoP.datos && !estadoP.cargando) cargarProgramas();
+  if (estadoP.pestana === 'instalar') prepararInstalar();
+  if (estadoP.pestana === 'espacio') prepararEspacio();
+}
+$$('#pg-pestanas button').forEach(b => b.onclick = () => {
+  estadoP.pestana = b.dataset.v;
+  $$('#pg-pestanas button').forEach(x => x.classList.toggle('activo', x === b));
+  ['instalados', 'instalar', 'espacio'].forEach(v => $('#pg-' + v).classList.toggle('oculto', v !== estadoP.pestana));
+  sonar('clic');
+  prepararProgramas();
+});
+async function cargarProgramas() {
+  estadoP.cargando = true;
+  $('#pg-lista').innerHTML = Array.from({ length: 6 }, () => '<div class="esqueleto"></div>').join('');
+  $('#pg-resumen').innerHTML = `<span class="girando">${ico('actualizar')}</span> Leyendo programas instalados…`;
+  const r = await api.programas(true);
+  if (!r.ok) { estadoP.cargando = false; $('#pg-lista').innerHTML = `<div class="vacio">${esc(r.mensaje)}</div>`; $('#pg-resumen').textContent = ''; return; }
+  estadoP.datos = r.datos; estadoP.midiendo = true;
+  pintarProgramas();
+  const r2 = await api.programas(false);
+  estadoP.cargando = false; estadoP.midiendo = false;
+  if (r2.ok) estadoP.datos = r2.datos;
+  pintarProgramas();
+}
+function filtrarProgramas() {
+  const q = $('#pg-buscar').value.trim().toLowerCase();
+  const cat = $('#pg-cat').value;
+  const ocultar = $('#pg-ocultar').checked;
+  let l = estadoP.datos.Programas.filter(p => {
+    if (estadoP.unidad === '?' ? p.Unidad : (estadoP.unidad && p.Unidad !== estadoP.unidad)) return false;
+    if (cat === 'store' ? p.Tipo !== 'store' : (cat && p.Categoria !== cat)) return false;
+    if (!cat && ocultar && ['controlador', 'componente', 'windows'].includes(p.Categoria)) return false;
+    if (q && !`${p.Nombre} ${p.Editor}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const orden = $('#pg-orden').value;
+  if (orden === 'tamano') l.sort((a, b) => tamProg(b) - tamProg(a) || a.Nombre.localeCompare(b.Nombre));
+  else if (orden === 'nombre') l.sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es'));
+  else if (orden === 'fecha') l.sort((a, b) => String(b.Fecha || '').localeCompare(String(a.Fecha || '')));
+  else l.sort((a, b) => String(a.Fecha || '9').localeCompare(String(b.Fecha || '9')));
+  return l;
+}
+function pintarUnidades() {
+  const d = estadoP.datos;
+  const progs = d.Programas;
+  const tarjetas = (d.Unidades || []).map(u => {
+    const enU = progs.filter(p => p.Unidad === u.Letra.toUpperCase());
+    const tam = enU.reduce((a, p) => a + tamProg(p), 0);
+    const usado = u.Total ? (u.Total - u.Libre) / u.Total * 100 : 0;
+    const pProg = u.Total ? tam / u.Total * 100 : 0;
+    const col = usado > 92 ? 'var(--crit)' : usado > 80 ? 'var(--alto)' : 'var(--acc)';
+    return `<button class="pg-unidad ${estadoP.unidad === u.Letra.toUpperCase() ? 'activa' : ''}" data-u="${esc(u.Letra.toUpperCase())}">
+      <div class="pg-u-cab">${ico('disco')}<b>${esc(u.Letra)}</b><span class="sub">${esc(u.Nombre || '')}</span></div>
+      <div class="pg-u-barra" title="Programas ${fmtBytes(tam)} · Otros ${fmtBytes(u.Total - u.Libre - tam)} · Libre ${fmtBytes(u.Libre)}"><i class="prog" style="width:${pProg.toFixed(1)}%"></i><i class="otros" style="width:${Math.max(0, usado - pProg).toFixed(1)}%;--col:${col}"></i></div>
+      <div class="meta"><b>${enU.length}</b> programas · ${fmtBytes(tam)}</div>
+      <div class="meta">Libre <b style="color:${usado > 92 ? 'var(--crit)' : 'inherit'}">${fmtBytes(u.Libre)}</b> de ${fmtBytes(u.Total)}</div>
+    </button>`;
+  });
+  const sinU = progs.filter(p => !p.Unidad).length;
+  $('#pg-unidades').innerHTML = `<button class="pg-unidad ${!estadoP.unidad ? 'activa' : ''}" data-u=""><div class="pg-u-cab">${ico('caja')}<b>Todos</b></div><div class="meta"><b>${progs.length}</b> programas</div><div class="meta">${fmtBytes(progs.reduce((a, p) => a + tamProg(p), 0))} en total</div><div class="pg-u-leyenda"><i class="prog"></i>Programas <i class="otros"></i>Otros archivos</div></button>`
+    + tarjetas.join('')
+    + (sinU ? `<button class="pg-unidad ${estadoP.unidad === '?' ? 'activa' : ''}" data-u="?"><div class="pg-u-cab">${ico('info')}<b>Sin ubicación</b></div><div class="meta"><b>${sinU}</b> programas</div><div class="meta">Windows no sabe dónde están</div></button>` : '');
+  $$('#pg-unidades .pg-unidad').forEach(b => b.onclick = () => { estadoP.unidad = b.dataset.u; sonar('clic'); pintarProgramas(); });
+}
+function filaPrograma(p) {
+  const [nCat, iCat] = p.Tipo === 'store' && p.Categoria !== 'store-windows' ? ['Microsoft Store', 'caja'] : (CAT_PROG[p.Categoria] || CAT_PROG.programa);
+  const esp = estadoP.esperando.get(p.Id);
+  const tam = tamProg(p);
+  const tamTxt = tam ? `${p.TamanoReal != null && p.TamanoReal > 0 ? '' : '≈ '}${fmtBytes(tam)}` : (estadoP.midiendo && p.Carpeta ? '<span class="sub">midiendo…</span>' : '<span class="sub">–</span>');
+  const aviso = p.Categoria === 'componente' ? '<span class="etq aviso" title="Lo usan otros programas y juegos para funcionar">Lo usan otros programas</span>'
+    : p.Categoria === 'controlador' ? '<span class="etq aviso" title="Hace funcionar una pieza de tu PC">Controlador</span>'
+    : p.Categoria === 'windows' ? '<span class="etq">Parte de Windows</span>'
+    : p.Categoria === 'store-windows' ? '<span class="etq">Incluida con Windows</span>'
+    : `<span class="etq">${esc(nCat)}</span>`;
+  let accion;
+  if (esp) accion = `<div class="pg-espera"><span class="girando">${ico('actualizar')}</span><span>Termina el desinstalador…</span><button class="btn secundario chico" data-dejar>Dejar de esperar</button></div>`;
+  else if (p.Tipo === 'epic') accion = `<button class="btn secundario" data-desinstalar title="Se desinstala desde Epic Games Launcher">${ico('externo')}Epic Games</button>`;
+  else if (!p.PuedeDesinstalar) accion = `<span class="sub pg-nodes" title="Es parte de Windows">${ico('candado')}No se desinstala</span>`;
+  else accion = `<button class="btn secundario pg-btn-des" data-desinstalar>${ico('papelera')}Desinstalar</button>`;
+  return `<div class="item pg-item ${esp ? 'esperando' : ''}" data-id="${esc(p.Id)}">
+    <div class="ic-item pg-ic" data-icono="${p.Icono ? '1' : ''}">${ico(iCat)}</div>
+    <div class="cuerpo"><b class="pg-nom">${esc(p.Nombre)}</b>${aviso}
+      <div class="meta">${[p.Editor, p.Version ? 'v' + p.Version : '', p.Fecha ? 'instalado el ' + new Date(p.Fecha + 'T12:00').toLocaleDateString('es') : ''].filter(Boolean).map(esc).join(' · ')}</div>
+      ${p.Carpeta ? `<button class="pg-ruta" data-carpeta title="Abrir la carpeta">${ico('carpeta')}<span>${esc(p.Carpeta)}</span></button>` : ''}
+    </div>
+    <div class="tamano">${tamTxt}</div>
+    <div class="acciones">${accion}</div>
+  </div>`;
+}
+function pintarProgramas() {
+  if (!estadoP.datos) return;
+  pintarUnidades();
+  const l = filtrarProgramas();
+  const total = l.reduce((a, p) => a + tamProg(p), 0);
+  $('#pg-resumen').innerHTML = `<b>${l.length}</b> ${l.length === 1 ? 'programa' : 'programas'} · ${fmtBytes(total)}${estadoP.midiendo ? ` <span class="girando">${ico('actualizar')}</span> midiendo el tamaño real de cada carpeta…` : ''}`;
+  const max = 400;
+  $('#pg-lista').innerHTML = l.length ? l.slice(0, max).map(filaPrograma).join('') + (l.length > max ? `<p class="sub">Y ${l.length - max} más: usa el buscador.</p>` : '') : '<div class="vacio">No hay programas con ese filtro.</div>';
+  $$('#pg-lista .pg-item').forEach(el => {
+    const p = estadoP.datos.Programas.find(x => x.Id === el.dataset.id);
+    if (!p) return;
+    const b = el.querySelector('[data-desinstalar]'); if (b) b.onclick = () => desinstalarPrograma(p);
+    const c = el.querySelector('[data-carpeta]'); if (c) c.onclick = () => api.abrirCarpetaPrograma(p.Id);
+    const d = el.querySelector('[data-dejar]'); if (d) d.onclick = () => { api.dejarDeEsperar(p.Id); estadoP.esperando.delete(p.Id); pintarProgramas(); };
+  });
+  cargarIconos();
+}
+const obsIconos = 'IntersectionObserver' in window ? new IntersectionObserver(ents => ents.forEach(async en => {
+  if (!en.isIntersecting) return;
+  obsIconos.unobserve(en.target);
+  const id = en.target.closest('.pg-item').dataset.id;
+  const url = await api.iconoPrograma(id);
+  if (url) { en.target.innerHTML = `<img src="${url}" alt="">`; en.target.classList.add('con-icono'); }
+}), { rootMargin: '200px' }) : null;
+const iconosVistos = new Map();
+function cargarIconos() {
+  $$('#pg-lista .pg-ic[data-icono="1"]').forEach(el => {
+    const id = el.closest('.pg-item').dataset.id;
+    if (iconosVistos.has(id)) { const u = iconosVistos.get(id); if (u) { el.innerHTML = `<img src="${u}" alt="">`; el.classList.add('con-icono'); } return; }
+    if (obsIconos) obsIconos.observe(el);
+  });
+}
+if (api.iconoPrograma) { const orig = api.iconoPrograma; api.iconoPrograma = async id => { if (iconosVistos.has(id)) return iconosVistos.get(id); const u = await orig(id); iconosVistos.set(id, u); return u; }; }
+['#pg-buscar', '#pg-cat', '#pg-orden', '#pg-ocultar'].forEach(s => $(s).addEventListener(s === '#pg-buscar' ? 'input' : 'change', () => pintarProgramas()));
+$('#pg-recargar').onclick = () => { estadoP.datos = null; cargarProgramas(); };
+
+async function desinstalarPrograma(p) {
+  if (p.Tipo === 'epic') { const r = await api.desinstalar(p.Id); toast(r.mensaje, 7000); return; }
+  const riesgo = p.Categoria === 'componente' ? `<p class="l-aviso">${ico('alerta')}<span><b>Cuidado:</b> otros programas o juegos pueden necesitar este componente para abrir. Desinstálalo solo si sabes que ya no lo usa nada.</span></p>`
+    : p.Categoria === 'controlador' ? `<p class="l-aviso">${ico('alerta')}<span><b>Cuidado:</b> es el controlador de una pieza de tu PC (sonido, red, gráficos…). Si lo quitas, esa pieza puede dejar de funcionar.</span></p>` : '';
+  const ok = await modal({
+    titulo: `Desinstalar ${p.Nombre}`,
+    html: `${riesgo}<p>${p.Tipo === 'store' ? 'Se desinstalará la app de Microsoft Store. Puedes volver a instalarla desde la Store cuando quieras.' : 'Se abrirá el <b>desinstalador del propio programa</b>: sigue sus pasos. Doctor PC esperará a que termine y te avisará si deja restos.'}</p>
+      ${tamProg(p) ? `<p>Liberarás unos <b>${fmtBytes(tamProg(p))}</b>${p.Unidad ? ` en el disco ${esc(p.Unidad)}` : ''}.</p>` : ''}
+      <p class="sub">Algunos desinstaladores preguntan si quieres borrar tu configuración o partidas: lee bien antes de aceptar.</p>`,
+    confirmar: 'Desinstalar', peligro: !!riesgo, exigir: riesgo ? 'DESINSTALAR' : null
+  });
+  if (!ok) return;
+  const r = await api.desinstalar(p.Id);
+  if (!r.ok) { toast(r.mensaje, 6000); return; }
+  if (r.terminado) { toast(`${p.Nombre} desinstalado.`); sonar('exito'); quitarPrograma(p.Id); return; }
+  estadoP.esperando.set(p.Id, true);
+  toast('Se abrió el desinstalador. Sigue sus pasos.', 5000);
+  pintarProgramas();
+}
+function quitarPrograma(id) {
+  const el = document.querySelector(`.pg-item[data-id="${CSS.escape(id)}"]`);
+  const fin = () => { estadoP.datos.Programas = estadoP.datos.Programas.filter(x => x.Id !== id); pintarProgramas(); };
+  if (el && animado()) { el.classList.add('saliendo'); setTimeout(fin, 420); } else fin();
+}
+api.onProgramas(async d => {
+  if (d.estado === 'esperando') return;
+  estadoP.esperando.delete(d.id);
+  if (d.estado === 'tiempo') { toast(`No se detectó que ${d.nombre} terminara de desinstalarse.`, 6000); pintarProgramas(); return; }
+  if (d.estado === 'desinstalado') {
+    sonar('exito');
+    quitarPrograma(d.id);
+    if (!d.restos) { toast(`${d.nombre} desinstalado sin dejar restos.`, 5000); return; }
+    const ok = await modal({
+      titulo: `${d.nombre} se desinstaló`,
+      html: `<p>Pero dejó una carpeta con <b>${fmtBytes(d.restos.tamano)}</b>:</p><p><code>${esc(d.restos.carpeta)}</code></p>
+        ${d.restos.segura ? '<p>Suelen ser configuraciones o registros que ya no sirven. Si la envías a la papelera, podrás recuperarla si hiciera falta.</p>' : '<p>Por seguridad, esta carpeta no se borra desde Doctor PC. Ábrela y revisa tú.</p>'}`,
+      confirmar: d.restos.segura ? 'Enviar a la papelera' : 'Abrir carpeta'
+    });
+    if (!ok) return;
+    if (!d.restos.segura) { api.abrirCarpetaPrograma(d.id); return; }
+    const r = await api.borrarRestos(d.id);
+    toast(r.ok ? 'Restos enviados a la papelera.' : r.mensaje, 6000);
+    if (!r.ok) api.abrirCarpetaPrograma(d.id);
+  }
+});
+
+// ---------------------------------------------------------------- instalar
+async function prepararInstalar() {
+  if (!estadoP.catalogo) {
+    $('#pi-catalogo').innerHTML = Array.from({ length: 3 }, () => '<div class="esqueleto alto"></div>').join('');
+    const r = await api.catalogo();
+    estadoP.catalogo = r.catalogo; estadoP.winget = r.winget;
+  }
+  if (!estadoP.datos && !estadoP.cargando) { const r = await api.programas(true); if (r.ok && !estadoP.datos) estadoP.datos = r.datos; }
+  pintarCatalogo();
+}
+function instaladoCatalogo(a) {
+  if (!estadoP.datos) return false;
+  try { const re = new RegExp(a.detecta, 'i'); return estadoP.datos.Programas.some(p => re.test(p.Nombre || '')); } catch (e) { return false; }
+}
+function tarjetaApp(a, iconoCat) {
+  const ins = estadoP.instalando.get(a.id);
+  const ya = instaladoCatalogo(a);
+  let pie;
+  if (ins && !['ok', 'error'].includes(ins.fase)) {
+    pie = `<div class="pi-progreso"><div class="barra ${ins.pct == null ? 'indet' : ''}"><i style="width:${ins.pct == null ? 35 : ins.pct}%"></i></div><small>${esc(ins.texto || '')}</small></div>`;
+  } else if (ya) {
+    pie = `<span class="pi-ok">${ico('check')}Instalado</span><button class="btn secundario chico" data-act="actualizar">${ico('actualizar')}Actualizar</button>`;
+  } else {
+    pie = `<button class="btn chico" data-act="instalar" ${estadoP.winget ? '' : 'disabled'}>${ico('descarga')}Instalar</button>`;
+  }
+  const msg = ins && ['ok', 'error'].includes(ins.fase) ? `<small class="pi-msg ${ins.fase}">${esc(ins.texto || '')}</small>` : '';
+  return `<div class="pi-app ${ya ? 'instalada' : ''}" data-id="${esc(a.id)}"><div class="pi-cab"><div class="ic-item">${ico(iconoCat)}</div><div><b>${esc(a.nombre)}</b><p>${esc(a.desc)}</p></div></div>${msg}<div class="pi-pie">${pie}</div></div>`;
+}
+function pintarCatalogo() {
+  const c = estadoP.catalogo;
+  if (!c) return;
+  $('#pi-aviso').innerHTML = estadoP.winget ? '' : `<div class="tarjeta banner-aviso">${ico('alerta')}<div><b>Tu Windows no tiene winget</b><p class="sub">Es el instalador oficial de programas de Microsoft. Instala o actualiza "Instalador de aplicación" desde Microsoft Store y vuelve a abrir Doctor PC.</p></div><button class="btn" id="btn-appinstaller">${ico('externo')}Abrir Microsoft Store</button></div>`;
+  const b = $('#btn-appinstaller'); if (b) b.onclick = () => api.abrirAjuste('appinstaller');
+  const q = $('#pi-buscar').value.trim().toLowerCase();
+  const nIns = c.categorias.reduce((n, cat) => n + cat.apps.filter(instaladoCatalogo).length, 0);
+  const nTot = c.categorias.reduce((n, cat) => n + cat.apps.length, 0);
+  $('#pi-estado').textContent = `${nTot} programas · ${nIns} ya instalados${estadoP.winget ? ` · winget ${estadoP.winget}` : ''}`;
+  $('#pi-catalogo').innerHTML = c.categorias.map(cat => {
+    const apps = cat.apps.filter(a => !q || `${a.nombre} ${a.desc}`.toLowerCase().includes(q));
+    if (!apps.length) return '';
+    return `<h3 class="titulo-grupo">${ico(cat.icono)}${esc(cat.nombre)}</h3><div class="pi-grid">${apps.map(a => tarjetaApp(a, cat.icono)).join('')}</div>`;
+  }).join('') || '<div class="vacio">No hay programas con ese nombre en el catálogo.</div>';
+  $$('#pi-catalogo [data-act]').forEach(btn => btn.onclick = () => instalarApp(btn.closest('.pi-app').dataset.id, btn.dataset.act));
+}
+async function instalarApp(id, accion) {
+  estadoP.instalando.set(id, { fase: 'cola', pct: null, texto: 'En cola…' });
+  pintarCatalogo();
+  const r = await api.instalar(id, accion);
+  if (r.programas) estadoP.datos = r.programas;
+  if (r.sinWinget) { estadoP.winget = false; }
+  estadoP.instalando.set(id, { fase: r.ok ? 'ok' : 'error', texto: r.mensaje });
+  if (r.ok) sonar('exito'); else sonar('error');
+  if (estado.vista === 'programas') { pintarCatalogo(); if (estadoP.pestana === 'instalados') pintarProgramas(); }
+}
+api.onInstalacion(d => {
+  const prev = estadoP.instalando.get(d.id) || {};
+  estadoP.instalando.set(d.id, { fase: d.fase || prev.fase || 'inicio', pct: d.pct != null ? d.pct : (d.fase && d.fase !== prev.fase ? null : prev.pct), texto: d.texto || prev.texto });
+  const el = document.querySelector(`.pi-app[data-id="${CSS.escape(d.id)}"]`);
+  if (!el || !estadoP.catalogo) return;
+  const cat = estadoP.catalogo.categorias.find(c => c.apps.some(a => a.id === d.id));
+  const a = cat.apps.find(x => x.id === d.id);
+  el.outerHTML = tarjetaApp(a, cat.icono);
+  const nuevo = document.querySelector(`.pi-app[data-id="${CSS.escape(d.id)}"]`);
+  nuevo.querySelectorAll('[data-act]').forEach(btn => btn.onclick = () => instalarApp(d.id, btn.dataset.act));
+});
+$('#pi-buscar').addEventListener('input', () => pintarCatalogo());
+
+// ---------------------------------------------------------------- qué ocupa espacio
+const NOMBRES_PERFIL = { Downloads: 'Descargas', Documents: 'Documentos', Desktop: 'Escritorio', Pictures: 'Imágenes', Videos: 'Vídeos', Music: 'Música', AppData: 'AppData (datos de programas)', OneDrive: 'OneDrive', 'Saved Games': 'Partidas guardadas', Favorites: 'Favoritos', Contacts: 'Contactos', Links: 'Vínculos', '3D Objects': 'Objetos 3D', Searches: 'Búsquedas' };
+const NOTAS_CARPETA = { Windows: 'El sistema. No se toca a mano: usa Limpieza.', 'Program Files': 'Programas de 64 bits: desinstala desde Instalados.', 'Program Files (x86)': 'Programas de 32 bits: desinstala desde Instalados.', ProgramData: 'Datos compartidos de programas.', Users: 'Carpetas de los usuarios (abajo tienes el detalle de la tuya).', '$Recycle.Bin': 'La papelera.', 'System Volume Information': 'Puntos de restauración de Windows.', AppData: 'Configuración y cachés de tus programas. Las cachés se limpian desde Limpieza.', Downloads: 'Suele acumular instaladores que ya no hacen falta.' };
+const TIPO_GRANDE = { personal: ['Tuyo', ''], programa: ['De un programa', 'aviso'], sistema: ['De Windows', 'aviso'], app: ['Datos de una app', 'aviso'] };
+let unidadesEspacio = false;
+async function prepararEspacio() {
+  if (unidadesEspacio) return;
+  const u = await api.unidades();
+  $('#pe-unidad').innerHTML = u.map(x => `<option value="${esc(x.letra)}">${esc(x.letra)} ${x.nombre ? esc(x.nombre) + ' ' : ''}(${x.gb} GB)</option>`).join('');
+  unidadesEspacio = true;
+}
+api.onEspacio(p => { $('#pe-texto').textContent = `${p.archivos.toLocaleString('es')} archivos revisados · ${fmtBytes(p.bytes)}`; $('#pe-carpeta').textContent = p.carpeta; });
+$('#btn-pe-analizar').onclick = async () => {
+  const u = $('#pe-unidad').value || 'C:';
+  $('#btn-pe-analizar').disabled = true; $('#pe-resultado').innerHTML = '';
+  $('#pe-progreso').classList.remove('oculto'); $('#pe-texto').textContent = 'Contando archivos…'; $('#pe-carpeta').textContent = '';
+  sonar('inicio');
+  const r = await api.analizarEspacio(u);
+  $('#btn-pe-analizar').disabled = false; $('#pe-progreso').classList.add('oculto');
+  if (!r.ok) { toast(r.mensaje); return; }
+  estadoP.espacio = r.datos;
+  sonar('fin', true);
+  pintarEspacio();
+};
+function barrasEspacio(items, total, nombres) {
+  const max = Math.max(1, ...items.map(x => x.Tamano));
+  return items.filter(x => x.Tamano > 0).map(x => {
+    const nota = NOTAS_CARPETA[x.Nombre];
+    return `<button class="fila-barra pe-fila" data-ruta="${esc(x.Ruta)}" title="Abrir ${esc(x.Ruta)}"><span class="nombre">${esc((nombres && nombres[x.Nombre]) || x.Nombre)}${nota ? `<small>${esc(nota)}</small>` : ''}</span><span class="pista"><i style="width:${(x.Tamano / max * 100).toFixed(1)}%;--col:var(--acc)"></i></span><span class="dato">${fmtBytes(x.Tamano)}${total ? ` · ${Math.round(x.Tamano / total * 100)} %` : ''}</span></button>`;
+  }).join('');
+}
+function pintarEspacio() {
+  const e = estadoP.espacio;
+  const usado = e.Total ? e.Total - e.Libre : e.Analizado;
+  const grandes = e.Grandes || [];
+  const sistemaTxt = n => /pagefile/i.test(n) ? 'Memoria virtual de Windows. No se borra.' : /hiberfil/i.test(n) ? 'Hibernación. Ver Limpieza > Para recuperar más espacio.' : /swapfile/i.test(n) ? 'Memoria de las apps de Windows. No se borra.' : '';
+  $('#pe-resultado').innerHTML = `
+    <div class="tarjeta pe-resumen">
+      <div><small>Usado</small><b>${fmtBytes(usado)}</b></div>
+      <div><small>Libre</small><b>${fmtBytes(e.Libre)}</b></div>
+      <div><small>Revisado</small><b>${fmtBytes(e.Analizado)}</b><span class="meta">${e.Archivos.toLocaleString('es')} archivos</span></div>
+      ${e.Inaccesibles ? `<div><small>Sin acceso</small><b>${e.Inaccesibles.toLocaleString('es')}</b><span class="meta">carpetas protegidas de Windows</span></div>` : ''}
+    </div>
+    <div class="columnas-2">
+      <div class="tarjeta"><h3>Carpetas principales de ${esc(e.Ruta)}</h3><div class="lista-barras">${barrasEspacio(e.Carpetas, e.Analizado)}</div></div>
+      ${(e.Perfil || []).length ? `<div class="tarjeta"><h3>Tu carpeta de usuario</h3><div class="lista-barras">${barrasEspacio(e.Perfil, 0, NOMBRES_PERFIL)}</div></div>` : ''}
+    </div>
+    <div class="tarjeta"><h3>Archivos más grandes</h3><p class="sub">Solo puedes enviar a la papelera tus propios archivos. Los de programas o de Windows se quitan desinstalando o desde Limpieza.</p>
+      <div class="pe-grandes">${grandes.length ? grandes.map(g => {
+        const [t, cls] = TIPO_GRANDE[g.Tipo] || TIPO_GRANDE.personal;
+        const nota = g.Tipo === 'sistema' ? sistemaTxt(g.Nombre) : '';
+        return `<div class="pe-grande" data-ruta="${esc(g.Ruta)}"><div class="cuerpo"><b title="${esc(g.Nombre)}">${esc(g.Nombre)}</b> <span class="etq ${cls}">${t}</span><div class="meta" title="${esc(g.Ruta)}">${esc(g.Ruta)}${g.Fecha ? ' · ' + esc(g.Fecha) : ''}</div>${nota ? `<div class="meta">${esc(nota)}</div>` : ''}</div><b class="tamano">${fmtBytes(g.Tamano)}</b><div class="acciones"><button class="btn secundario chico" data-mostrar>${ico('carpeta')}Mostrar</button>${g.Tipo === 'personal' ? `<button class="btn secundario chico" data-papelera>${ico('papelera')}A la papelera</button>` : ''}</div></div>`;
+      }).join('') : '<p class="sub">No hay archivos de más de 100 MB.</p>'}</div></div>`;
+  $$('#pe-resultado .pe-fila').forEach(b => b.onclick = () => api.mostrarEspacio(b.dataset.ruta));
+  $$('#pe-resultado .pe-grande').forEach(el => {
+    el.querySelector('[data-mostrar]').onclick = () => api.mostrarEspacio(el.dataset.ruta);
+    const p = el.querySelector('[data-papelera]');
+    if (p) p.onclick = async () => {
+      const g = grandes.find(x => x.Ruta === el.dataset.ruta);
+      const ok = await modal({ titulo: 'Enviar a la papelera', html: `<p><b>${esc(g.Nombre)}</b> · ${fmtBytes(g.Tamano)}</p><p class="sub">${esc(g.Ruta)}</p><p>Irá a la papelera: podrás recuperarlo hasta que la vacíes.</p>`, confirmar: 'Enviar a la papelera' });
+      if (!ok) return;
+      const r = await api.papeleraEspacio(g.Ruta);
+      if (!r.ok) { toast(r.mensaje, 5000); return; }
+      sonar('exito'); toast(`${g.Nombre} está en la papelera.`);
+      el.classList.add('saliendo'); setTimeout(() => el.remove(), 420);
+    };
+  });
+  escalonar($('#pe-resultado'));
+}
 
 // ================================================================== velocidad del disco
 let unidadesCargadas = false;

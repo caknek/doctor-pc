@@ -15,6 +15,8 @@ const SCRIPT = path.join(ENGINE_DIR, 'DoctorPC.ps1');
 const SCRIPT_MONITOR = path.join(ENGINE_DIR, 'monitor.ps1');
 const SCRIPT_LIMPIEZA = path.join(ENGINE_DIR, 'limpieza.ps1');
 const SCRIPT_DISCO = path.join(ENGINE_DIR, 'prueba-disco.ps1');
+const SCRIPT_PROGRAMAS = path.join(ENGINE_DIR, 'programas.ps1');
+const CATALOGO_PROGRAMAS = path.join(ENGINE_DIR, 'datos', 'catalogo_programas.json');
 const SENSORES_EXE = path.join(ENGINE_DIR, 'sensores', 'DoctorPC.Sensores.exe');
 const BASE_DOCS = path.join(app.getPath('documents'), 'DoctorPC');
 const INFORMES = path.join(BASE_DOCS, 'Informes');
@@ -698,7 +700,7 @@ function ejecutarLimpieza(modo, elementos) {
   asegurarCarpeta(TEMP); asegurarCarpeta(INFORMES);
   const salida = path.join(TEMP, `limpieza_${Date.now()}.json`);
   const sel = (elementos || []).filter(x => /^[a-z_]+$/.test(x));
-  const elevar = modo === 'limpiar' && sel.includes('temp_windows');
+  const elevar = modo === 'limpiar' && sel.some(x => LIMPIEZA_ADMIN.includes(x));
   const args = ['-Modo', modo, '-Salida', salida, '-Registro', REGISTRO];
   if (sel.length) args.push('-Elementos', sel.join(','));
   ocupado = 'limpieza';
@@ -710,12 +712,293 @@ function ejecutarLimpieza(modo, elementos) {
       ocupado = null;
       const r = leerJson(salida);
       try { fs.unlinkSync(salida); } catch (e) { /* nada */ }
-      if (r) resolve({ ok: true, datos: r });
+      if (r) { if (modo === 'analizar') ultimaLimpieza = r; resolve({ ok: true, datos: r }); }
       else if (esUacRechazado(codigo, err)) resolve({ ok: false, mensaje: 'No se concedió el permiso de administrador.' });
       else resolve({ ok: false, mensaje: 'No se pudo completar la limpieza.' });
     });
     proc.on('error', e => { ocupado = null; resolve({ ok: false, mensaje: e.message }); });
   });
+}
+
+const LIMPIEZA_ADMIN = ['temp_windows', 'windows_update', 'entrega', 'volcados_sistema', 'registros_windows'];
+let ultimaLimpieza = null;
+// Instaladores de Descargas elegidos por el usuario: solo los que salieron en el último análisis, y a la papelera
+async function limpiarDescargas(rutas) {
+  const cat = ultimaLimpieza && (ultimaLimpieza.Categorias || []).find(c => c.Id === 'descargas');
+  const validos = new Map(((cat && cat.Lista) || []).map(x => [path.resolve(x.Ruta).toLowerCase(), x]));
+  let liberado = 0, enviados = 0, fallos = 0;
+  for (const r of (rutas || []).slice(0, 500)) {
+    const x = validos.get(path.resolve(String(r)).toLowerCase());
+    if (!x || !/\.(exe|msi|msix|msixbundle|appx|appxbundle|iso)$/i.test(x.Ruta) || !fs.existsSync(x.Ruta)) { fallos++; continue; }
+    try { await shell.trashItem(x.Ruta); liberado += Number(x.Tamano) || 0; enviados++; registrar(`LIMPIEZA enviado a la papelera: ${x.Ruta}`); } catch (e) { fallos++; }
+  }
+  return { ok: true, liberado, enviados, fallos };
+}
+function registrar(t) {
+  try { asegurarCarpeta(INFORMES); const d = new Date(); const f = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${d.toTimeString().slice(0, 8)}`; fs.appendFileSync(REGISTRO, `${f}  ${t}\r\n`, 'utf8'); } catch (e) { /* nada */ }
+}
+function accionLimpieza(accion) {
+  if (accion !== 'hibernacion_off') return Promise.resolve({ ok: false, mensaje: 'Acción desconocida.' });
+  asegurarCarpeta(TEMP);
+  const salida = path.join(TEMP, `accion_${Date.now()}.json`);
+  return new Promise(resolve => {
+    const proc = lanzarScript(SCRIPT_LIMPIEZA, ['-Modo', 'accion', '-Accion', accion, '-Salida', salida, '-Registro', REGISTRO], true, false);
+    let err = '';
+    proc.stderr.on('data', d => { err += d.toString(); });
+    proc.on('close', codigo => {
+      const r = leerJson(salida);
+      try { fs.unlinkSync(salida); } catch (e) { /* nada */ }
+      if (r) resolve({ ok: !!r.Ok, mensaje: r.Mensaje });
+      else resolve({ ok: false, mensaje: esUacRechazado(codigo, err) ? 'No se concedió el permiso de administrador.' : 'No se pudo completar.' });
+    });
+    proc.on('error', e => resolve({ ok: false, mensaje: e.message }));
+  });
+}
+
+// ------------------------------------------------------------------ programas instalados
+const programasCache = new Map();
+let listandoProgramas = null;
+const esperasDesinstalacion = new Map();
+const iconosCache = new Map();
+
+function correrMotor(script, args, opciones = {}) {
+  asegurarCarpeta(TEMP);
+  const salida = path.join(TEMP, `motor_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.json`);
+  return new Promise(resolve => {
+    const proc = lanzarScript(script, [...args, '-Salida', salida], !!opciones.elevar, false);
+    let err = '';
+    proc.stderr.on('data', d => { err += d.toString(); });
+    proc.on('close', codigo => {
+      const datos = leerJson(salida);
+      try { fs.unlinkSync(salida); } catch (e) { /* nada */ }
+      resolve({ codigo, datos, err });
+    });
+    proc.on('error', e => resolve({ codigo: -1, datos: null, err: e.message }));
+  });
+}
+
+function listarProgramas(sinTamanos) {
+  if (listandoProgramas && !sinTamanos) return listandoProgramas;
+  const tarea = correrMotor(SCRIPT_PROGRAMAS, ['-Modo', 'listar', ...(sinTamanos ? ['-SinTamanos'] : [])]).then(r => {
+    if (!r.datos) return { ok: false, mensaje: 'No se pudo leer la lista de programas.' };
+    const lista = Array.isArray(r.datos.Programas) ? r.datos.Programas : (r.datos.Programas ? [r.datos.Programas] : []);
+    if (!sinTamanos || !programasCache.size) {
+      programasCache.clear();
+      lista.forEach(p => programasCache.set(p.Id, p));
+    } else {
+      // lista rápida: conserva los tamaños ya medidos
+      const viejo = new Map(programasCache);
+      programasCache.clear();
+      lista.forEach(p => { const v = viejo.get(p.Id); if (v && v.TamanoReal != null) p.TamanoReal = v.TamanoReal; programasCache.set(p.Id, p); });
+    }
+    return { ok: true, datos: { Fecha: r.datos.Fecha, Unidades: [].concat(r.datos.Unidades || []), Programas: [...programasCache.values()] } };
+  });
+  if (!sinTamanos) { listandoProgramas = tarea; tarea.finally(() => { listandoProgramas = null; }); }
+  return tarea;
+}
+
+function existeClaveRegistro(clave) {
+  return new Promise(resolve => {
+    const k = String(clave).replace(/^HKLM:\\/i, 'HKLM\\').replace(/^HKCU:\\/i, 'HKCU\\');
+    const p = spawn('reg.exe', ['query', k], { windowsHide: true });
+    p.on('close', c => resolve(c === 0));
+    p.on('error', () => resolve(true));
+  });
+}
+async function sigueInstalado(prog) {
+  if (prog.Clave) return existeClaveRegistro(prog.Clave);
+  if (prog.Paquete) { const r = await correrMotor(SCRIPT_PROGRAMAS, ['-Modo', 'existe', '-Paquete', prog.Paquete]); return !!(r.datos && r.datos.Existe); }
+  return true;
+}
+
+// Tamaño de una carpeta sin seguir enlaces (para los restos que deja un desinstalador)
+async function medirCarpeta(raiz, limite = 200000) {
+  let total = 0, n = 0;
+  const pila = [raiz];
+  while (pila.length && n < limite) {
+    const d = pila.pop();
+    let items;
+    try { items = await fs.promises.readdir(d, { withFileTypes: true }); } catch (e) { continue; }
+    for (const it of items) {
+      const r = path.join(d, it.name);
+      if (it.isSymbolicLink()) continue;
+      if (it.isDirectory()) pila.push(r);
+      else if (it.isFile()) { try { total += (await fs.promises.lstat(r)).size; n++; } catch (e) { /* en uso */ } }
+    }
+  }
+  return total;
+}
+function carpetaSegura(c) {
+  if (!c) return false;
+  const r = path.resolve(c);
+  const partes = r.split(path.sep).filter(Boolean);
+  if (partes.length < 2) return false;
+  const prohibidas = [process.env.SystemRoot, process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramData, os.homedir(), process.env.APPDATA, process.env.LOCALAPPDATA, path.join(process.env.LOCALAPPDATA || '', 'Programs'), path.join(os.homedir(), 'Documents'), path.join(os.homedir(), 'Desktop'), path.join(os.homedir(), 'Downloads'), path.join(path.parse(r).root, 'Users')]
+    .filter(Boolean).map(x => path.resolve(x).toLowerCase());
+  if (prohibidas.includes(r.toLowerCase())) return false;
+  if (process.env.SystemRoot && dentroDe(process.env.SystemRoot, r)) return false;
+  return true;
+}
+
+async function desinstalarPrograma(id) {
+  const p = programasCache.get(id);
+  if (!p) return { ok: false, mensaje: 'Vuelve a cargar la lista de programas.' };
+  if (p.Tipo === 'epic') { shell.openExternal('com.epicgames.launcher://store'); return { ok: false, epic: true, mensaje: 'Los juegos de Epic se desinstalan desde Epic Games Launcher: Biblioteca > ⋯ > Desinstalar.' }; }
+  if (!p.PuedeDesinstalar) return { ok: false, mensaje: 'Este componente es parte de Windows y no se desinstala.' };
+  const args = ['-Modo', 'desinstalar', '-Registro', REGISTRO, ...(p.Paquete ? ['-Paquete', p.Paquete] : ['-Clave', p.Clave])];
+  const r = await correrMotor(SCRIPT_PROGRAMAS, args);
+  if (!r.datos || !r.datos.Ok) return { ok: false, mensaje: (r.datos && r.datos.Mensaje) || 'No se pudo abrir el desinstalador.' };
+  if (p.Tipo === 'store') { programasCache.delete(id); return { ok: true, terminado: true, mensaje: 'App desinstalada.' }; }
+  esperarDesinstalacion(p);
+  return { ok: true, esperando: true, mensaje: r.datos.Mensaje };
+}
+function esperarDesinstalacion(p) {
+  pararEspera(p.Id);
+  const inicio = Date.now();
+  const t = setInterval(async () => {
+    const sigue = await sigueInstalado(p);
+    if (!esperasDesinstalacion.has(p.Id)) return;
+    if (!sigue) {
+      pararEspera(p.Id);
+      programasCache.delete(p.Id);
+      const restos = p.Carpeta && fs.existsSync(p.Carpeta) ? { carpeta: p.Carpeta, tamano: await medirCarpeta(p.Carpeta), segura: carpetaSegura(p.Carpeta) } : null;
+      if (restos) programasCache.set('restos:' + p.Id, Object.assign({}, p, { Id: 'restos:' + p.Id }));
+      enviar('programas', { id: p.Id, estado: 'desinstalado', nombre: p.Nombre, restos });
+      registrar(`PROGRAMAS desinstalado: ${p.Nombre}`);
+    } else if (Date.now() - inicio > 20 * 60000) {
+      pararEspera(p.Id);
+      enviar('programas', { id: p.Id, estado: 'tiempo', nombre: p.Nombre });
+    }
+  }, 3000);
+  esperasDesinstalacion.set(p.Id, t);
+  enviar('programas', { id: p.Id, estado: 'esperando', nombre: p.Nombre });
+}
+function pararEspera(id) { const t = esperasDesinstalacion.get(id); if (t) clearInterval(t); esperasDesinstalacion.delete(id); }
+
+async function borrarRestos(id) {
+  const p = programasCache.get('restos:' + id);
+  if (!p || !p.Carpeta || !fs.existsSync(p.Carpeta)) return { ok: false, mensaje: 'La carpeta ya no existe.' };
+  if (!carpetaSegura(p.Carpeta)) return { ok: false, mensaje: 'Por seguridad, esta carpeta no se borra desde Doctor PC. Revísala tú.' };
+  if (await sigueInstalado(p)) return { ok: false, mensaje: 'El programa sigue instalado.' };
+  try { await shell.trashItem(p.Carpeta); programasCache.delete('restos:' + id); registrar(`PROGRAMAS restos enviados a la papelera: ${p.Carpeta}`); return { ok: true }; }
+  catch (e) { return { ok: false, mensaje: 'Algunos archivos están en uso o necesitan permiso de administrador. Ábrela y bórrala a mano.' }; }
+}
+
+async function iconoPrograma(id) {
+  const p = programasCache.get(id);
+  if (!p || !p.Icono) return null;
+  if (iconosCache.has(p.Icono)) return iconosCache.get(p.Icono);
+  let url = null;
+  try { const img = await app.getFileIcon(p.Icono, { size: 'normal' }); if (img && !img.isEmpty()) url = img.toDataURL(); } catch (e) { url = null; }
+  iconosCache.set(p.Icono, url);
+  return url;
+}
+
+// ------------------------------------------------------------------ instalar con winget
+let catalogoProgramas = null;
+function cargarCatalogo() {
+  if (!catalogoProgramas) catalogoProgramas = leerJson(CATALOGO_PROGRAMAS) || { categorias: [] };
+  return catalogoProgramas;
+}
+function appCatalogo(id) {
+  for (const c of cargarCatalogo().categorias) { const a = c.apps.find(x => x.id === id); if (a) return a; }
+  return null;
+}
+let wingetDisponible = null;
+function comprobarWinget() {
+  if (wingetDisponible !== null) return Promise.resolve(wingetDisponible);
+  return new Promise(resolve => {
+    let out = '';
+    const p = spawn('winget', ['--version'], { windowsHide: true });
+    p.stdout.on('data', d => { out += d.toString(); });
+    p.on('close', c => { wingetDisponible = c === 0 ? out.trim() : false; resolve(wingetDisponible); });
+    p.on('error', () => { wingetDisponible = false; resolve(false); });
+  });
+}
+const colaInstalar = [];
+let instalando = null;
+function instalarPrograma(id, accion) {
+  const a = appCatalogo(id);
+  if (!a) return Promise.resolve({ ok: false, mensaje: 'Ese programa no está en el catálogo.' });
+  return new Promise(resolve => {
+    colaInstalar.push({ a, accion: accion === 'actualizar' ? 'upgrade' : 'install', resolve });
+    enviar('instalacion', { id, fase: 'cola', pct: null, texto: 'En cola…' });
+    siguienteInstalacion();
+  });
+}
+async function siguienteInstalacion() {
+  if (instalando || !colaInstalar.length) return;
+  const tarea = colaInstalar.shift();
+  instalando = tarea;
+  const { a, accion, resolve } = tarea;
+  const fin = r => { instalando = null; resolve(r); siguienteInstalacion(); };
+  const v = await comprobarWinget();
+  if (!v) { enviar('instalacion', { id: a.id, fase: 'error', texto: 'Falta winget' }); return fin({ ok: false, sinWinget: true, mensaje: 'Windows no tiene winget (Instalador de aplicación).' }); }
+  const args = [accion, '--id', a.id, '-e', '--source', a.fuente || 'winget', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--silent'];
+  enviar('instalacion', { id: a.id, fase: 'inicio', pct: null, texto: accion === 'upgrade' ? 'Buscando actualización…' : 'Preparando…' });
+  const p = spawn('winget', args, { windowsHide: true });
+  let ultimas = [];
+  const leer = d => {
+    const trozos = d.toString().split(/[\r\n]+/).map(x => x.replace(/[▀-▟█]+/g, ' ').replace(/\s+/g, ' ').trim()).filter(x => x && !/^[-\\|/]$/.test(x));
+    for (const t of trozos) {
+      ultimas.push(t); if (ultimas.length > 8) ultimas.shift();
+      const pct = (t.match(/(\d{1,3})\s*%/) || [])[1];
+      const mb = t.match(/([\d.,]+\s*[KMG]B)\s*\/\s*([\d.,]+\s*[KMG]B)/i);
+      let fase = null;
+      if (/descarg|download/i.test(t)) fase = 'descargando';
+      else if (/instalando|installing|iniciando instal|starting package install/i.test(t)) fase = 'instalando';
+      else if (/correctamente|successfully/i.test(t)) fase = 'ok';
+      enviar('instalacion', { id: a.id, fase, pct: pct != null ? Number(pct) : null, texto: mb ? `${mb[1]} de ${mb[2]}` : t.slice(0, 120) });
+    }
+  };
+  p.stdout.on('data', leer);
+  p.stderr.on('data', leer);
+  p.on('error', e => { enviar('instalacion', { id: a.id, fase: 'error', texto: e.message }); fin({ ok: false, mensaje: e.message }); });
+  p.on('close', async codigo => {
+    const lista = await listarProgramas(true);
+    const re = new RegExp(a.detecta, 'i');
+    const instalado = lista.ok && lista.datos.Programas.some(x => re.test(x.Nombre || ''));
+    const sinCambios = codigo === -1978335189 || /no (se encontr|hay).*actualiz|no applicable update|no available upgrade|ya está instalad|already installed/i.test(ultimas.join(' '));
+    const ok = codigo === 0 || (accion === 'upgrade' && sinCambios && instalado) || (accion === 'install' && instalado);
+    const mensaje = ok ? (accion === 'upgrade' ? (sinCambios ? 'Ya tienes la última versión.' : 'Actualizado.') : 'Instalado.') : (ultimas.filter(x => !/%|[KMG]B/.test(x)).slice(-1)[0] || `winget terminó con el código ${codigo}.`);
+    enviar('instalacion', { id: a.id, fase: ok ? 'ok' : 'error', pct: ok ? 100 : null, texto: mensaje });
+    if (ok) registrar(`PROGRAMAS ${accion === 'upgrade' ? 'actualizado' : 'instalado'} con winget: ${a.nombre} (${a.id})`);
+    fin({ ok, mensaje, instalado, programas: lista.ok ? lista.datos : null });
+  });
+}
+
+// ------------------------------------------------------------------ qué ocupa espacio
+let ultimoEspacio = null;
+function analizarEspacio(ruta) {
+  if (ocupado) return Promise.resolve({ ok: false, mensaje: 'Hay otra tarea en curso.' });
+  ruta = String(ruta || 'C:');
+  if (!/^[A-Za-z]:\\?$/.test(ruta) && !(path.isAbsolute(ruta) && fs.existsSync(ruta))) return Promise.resolve({ ok: false, mensaje: 'Unidad no válida.' });
+  if (/^[A-Za-z]:$/.test(ruta)) ruta += '\\';
+  asegurarCarpeta(TEMP);
+  const progreso = path.join(TEMP, `espacio_${Date.now()}.txt`);
+  ocupado = 'espacio';
+  const timer = setInterval(() => {
+    try { const [n, b, d] = fs.readFileSync(progreso, 'utf8').split('|'); enviar('espacio', { archivos: Number(n) || 0, bytes: Number(b) || 0, carpeta: d || '' }); } catch (e) { /* aún no */ }
+  }, 500);
+  return correrMotor(SCRIPT_PROGRAMAS, ['-Modo', 'espacio', '-Ruta', ruta, '-ArchivoProgreso', progreso]).then(r => {
+    clearInterval(timer); ocupado = null;
+    try { fs.unlinkSync(progreso); } catch (e) { /* nada */ }
+    if (!r.datos) return { ok: false, mensaje: 'No se pudo analizar la unidad.' };
+    ultimoEspacio = r.datos;
+    return { ok: true, datos: r.datos };
+  });
+}
+function rutaDeEspacio(ruta) {
+  if (!ultimoEspacio) return null;
+  const r = path.resolve(String(ruta || '')).toLowerCase();
+  return [].concat(ultimoEspacio.Grandes || [], ultimoEspacio.Carpetas || [], ultimoEspacio.Perfil || []).find(x => path.resolve(x.Ruta).toLowerCase() === r) || null;
+}
+async function espacioAPapelera(ruta) {
+  const x = rutaDeEspacio(ruta);
+  if (!x || x.Tipo !== 'personal') return { ok: false, mensaje: 'Por seguridad, solo se pueden enviar a la papelera tus archivos personales de la lista.' };
+  if (!fs.existsSync(x.Ruta)) return { ok: false, mensaje: 'El archivo ya no existe.' };
+  try { await shell.trashItem(x.Ruta); registrar(`ESPACIO enviado a la papelera: ${x.Ruta}`); return { ok: true, tamano: x.Tamano }; }
+  catch (e) { return { ok: false, mensaje: 'No se pudo enviar a la papelera (¿está en uso?).' }; }
 }
 
 // ------------------------------------------------------------------ prueba de disco
@@ -915,9 +1198,10 @@ if (!app.requestSingleInstanceLock()) {
     });
     ipcMain.handle('abrir:ajuste', (e, id) => {
       const web = { amdweb: 'https://www.amd.com/es/support/download/drivers.html', nvidiaweb: 'https://www.nvidia.com/es-la/software/nvidia-app/', pawnio: 'https://pawnio.eu/', intelweb: 'https://www.intel.la/content/www/xl/es/support/detect.html' };
-      const ms = { modojuego: 'ms-settings:gaming-gamemode', capturas: 'ms-settings:gaming-gamedvr', graficos: 'ms-settings:display-advancedgraphics', pantalla: 'ms-settings:display-advanced', integridad: 'windowsdefender://coreisolation', almacenamiento: 'ms-settings:storagesense', actualizaciones: 'ms-settings:windowsupdate' };
+      const ms = { modojuego: 'ms-settings:gaming-gamemode', capturas: 'ms-settings:gaming-gamedvr', graficos: 'ms-settings:display-advancedgraphics', pantalla: 'ms-settings:display-advanced', integridad: 'windowsdefender://coreisolation', almacenamiento: 'ms-settings:storagesense', appinstaller: 'ms-windows-store://pdp/?productid=9NBLGGH4NNS1', apps: 'ms-settings:appsfeatures', actualizaciones: 'ms-settings:windowsupdate' };
       if (web[id]) { shell.openExternal(web[id]); return true; }
       if (ms[id]) { shell.openExternal(ms[id]); return true; }
+      if (id === 'papelera') { spawn('explorer.exe', ['shell:RecycleBinFolder'], { detached: true }); return true; }
       if (id === 'energia') { spawn('control.exe', ['powercfg.cpl'], { detached: true, windowsHide: false }); return true; }
       if (id === 'inicio') { spawn('taskmgr.exe', ['/0', '/startup'], { detached: true }); return true; }
       if (id === 'amd') {
@@ -933,6 +1217,19 @@ if (!app.requestSingleInstanceLock()) {
       return false;
     });
     ipcMain.handle('limpieza', (e, modo, elementos) => ejecutarLimpieza(modo === 'limpiar' ? 'limpiar' : 'analizar', elementos));
+    ipcMain.handle('limpieza:descargas', (e, rutas) => limpiarDescargas(rutas));
+    ipcMain.handle('limpieza:accion', (e, accion) => accionLimpieza(accion));
+    ipcMain.handle('programas:listar', (e, rapido) => listarProgramas(!!rapido));
+    ipcMain.handle('programas:desinstalar', (e, id) => desinstalarPrograma(String(id)));
+    ipcMain.handle('programas:dejarDeEsperar', (e, id) => { pararEspera(String(id)); return true; });
+    ipcMain.handle('programas:restos', (e, id) => borrarRestos(String(id)));
+    ipcMain.handle('programas:abrirCarpeta', (e, id) => { const p = programasCache.get(String(id)) || programasCache.get('restos:' + id); if (p && p.Carpeta && fs.existsSync(p.Carpeta)) shell.openPath(p.Carpeta); return true; });
+    ipcMain.handle('programas:icono', (e, id) => iconoPrograma(String(id)));
+    ipcMain.handle('programas:catalogo', async () => ({ catalogo: cargarCatalogo(), winget: await comprobarWinget() }));
+    ipcMain.handle('programas:instalar', (e, id, accion) => instalarPrograma(String(id), accion));
+    ipcMain.handle('espacio:analizar', (e, ruta) => analizarEspacio(ruta));
+    ipcMain.handle('espacio:mostrar', (e, ruta) => { const x = rutaDeEspacio(ruta); if (x && fs.existsSync(x.Ruta)) { if (fs.statSync(x.Ruta).isDirectory()) shell.openPath(x.Ruta); else shell.showItemInFolder(x.Ruta); } return true; });
+    ipcMain.handle('espacio:papelera', (e, ruta) => espacioAPapelera(ruta));
     ipcMain.handle('disco:unidades', () => listarUnidades());
     ipcMain.handle('disco:probar', (e, unidad) => pruebaDisco(unidad));
     ipcMain.handle('externo', (e, url) => { if (/^https:\/\//i.test(url)) shell.openExternal(url); return true; });

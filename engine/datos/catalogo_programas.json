@@ -1,0 +1,408 @@
+{
+ "version": 1,
+ "categorias": [
+  {
+   "nombre": "Navegadores",
+   "icono": "red",
+   "apps": [
+    {
+     "id": "Google.Chrome",
+     "nombre": "Google Chrome",
+     "desc": "El navegador más usado.",
+     "detecta": "^Google Chrome"
+    },
+    {
+     "id": "Mozilla.Firefox",
+     "nombre": "Firefox",
+     "desc": "Navegador libre y centrado en la privacidad.",
+     "detecta": "^Mozilla Firefox"
+    },
+    {
+     "id": "Brave.Brave",
+     "nombre": "Brave",
+     "desc": "Bloquea anuncios y rastreadores de serie.",
+     "detecta": "^Brave"
+    },
+    {
+     "id": "Opera.OperaGX",
+     "nombre": "Opera GX",
+     "desc": "Navegador para gamers que limita RAM y CPU.",
+     "detecta": "^Opera GX"
+    }
+   ]
+  },
+  {
+   "nombre": "Juegos",
+   "icono": "juego",
+   "apps": [
+    {
+     "id": "Valve.Steam",
+     "nombre": "Steam",
+     "desc": "La tienda de juegos de PC más grande.",
+     "detecta": "^Steam$"
+    },
+    {
+     "id": "EpicGames.EpicGamesLauncher",
+     "nombre": "Epic Games Launcher",
+     "desc": "Juegos gratis cada semana.",
+     "detecta": "^Epic Games Launcher"
+    },
+    {
+     "id": "GOG.Galaxy",
+     "nombre": "GOG Galaxy",
+     "desc": "Juegos sin DRM y biblioteca unificada.",
+     "detecta": "^GOG GALAXY"
+    },
+    {
+     "id": "ElectronicArts.EADesktop",
+     "nombre": "EA app",
+     "desc": "Juegos de EA (FC, Battlefield, Los Sims).",
+     "detecta": "^EA app$|^EA$"
+    },
+    {
+     "id": "Ubisoft.Connect",
+     "nombre": "Ubisoft Connect",
+     "desc": "Juegos de Ubisoft.",
+     "detecta": "^Ubisoft Connect"
+    },
+    {
+     "id": "Playnite.Playnite",
+     "nombre": "Playnite",
+     "desc": "Todas tus bibliotecas de juegos en un solo lugar.",
+     "detecta": "^Playnite"
+    }
+   ]
+  },
+  {
+   "nombre": "Comunicación",
+   "icono": "chat",
+   "apps": [
+    {
+     "id": "Discord.Discord",
+     "nombre": "Discord",
+     "desc": "Chat de voz y texto para jugar y comunidades.",
+     "detecta": "^Discord$"
+    },
+    {
+     "id": "9NKSQGP7F2NH",
+     "nombre": "WhatsApp",
+     "desc": "WhatsApp para escritorio (Microsoft Store).",
+     "detecta": "^WhatsApp",
+     "fuente": "msstore"
+    },
+    {
+     "id": "Telegram.TelegramDesktop",
+     "nombre": "Telegram",
+     "desc": "Mensajería rápida con sincronización en la nube.",
+     "detecta": "^Telegram Desktop"
+    },
+    {
+     "id": "Zoom.Zoom",
+     "nombre": "Zoom",
+     "desc": "Videollamadas y reuniones.",
+     "detecta": "^Zoom"
+    },
+    {
+     "id": "Anthropic.Claude",
+     "nombre": "Claude",
+     "desc": "La app de escritorio de Claude.",
+     "detecta": "^Claude$"
+    }
+   ]
+  },
+  {
+   "nombre": "Multimedia",
+   "icono": "volumen",
+   "apps": [
+    {
+     "id": "VideoLAN.VLC",
+     "nombre": "VLC",
+     "desc": "Reproduce cualquier vídeo o audio.",
+     "detecta": "^VLC media player"
+    },
+    {
+     "id": "Spotify.Spotify",
+     "nombre": "Spotify",
+     "desc": "Música y podcasts.",
+     "detecta": "^Spotify"
+    },
+    {
+     "id": "OBSProject.OBSStudio",
+     "nombre": "OBS Studio",
+     "desc": "Graba y transmite tu pantalla o tus partidas.",
+     "detecta": "^OBS Studio"
+    },
+    {
+     "id": "Audacity.Audacity",
+     "nombre": "Audacity",
+     "desc": "Edita y graba audio.",
+     "detecta": "^Audacity"
+    },
+    {
+     "id": "HandBrake.HandBrake",
+     "nombre": "HandBrake",
+     "desc": "Convierte y comprime vídeos.",
+     "detecta": "^HandBrake"
+    },
+    {
+     "id": "Daum.PotPlayer",
+     "nombre": "PotPlayer",
+     "desc": "Reproductor muy ligero con muchos códecs.",
+     "detecta": "^PotPlayer"
+    }
+   ]
+  },
+  {
+   "nombre": "Creatividad",
+   "icono": "paleta",
+   "apps": [
+    {
+     "id": "GIMP.GIMP.3",
+     "nombre": "GIMP",
+     "desc": "Editor de fotos gratuito, alternativa a Photoshop.",
+     "detecta": "^GIMP"
+    },
+    {
+     "id": "KDE.Krita",
+     "nombre": "Krita",
+     "desc": "Dibujo y pintura digital.",
+     "detecta": "^Krita"
+    },
+    {
+     "id": "BlenderFoundation.Blender",
+     "nombre": "Blender",
+     "desc": "Modelado 3D, animación y edición de vídeo.",
+     "detecta": "^Blender"
+    },
+    {
+     "id": "Inkscape.Inkscape",
+     "nombre": "Inkscape",
+     "desc": "Diseño vectorial, alternativa a Illustrator.",
+     "detecta": "^Inkscape"
+    },
+    {
+     "id": "ShareX.ShareX",
+     "nombre": "ShareX",
+     "desc": "Capturas y grabaciones de pantalla con edición.",
+     "detecta": "^ShareX"
+    }
+   ]
+  },
+  {
+   "nombre": "Oficina y PDF",
+   "icono": "informe",
+   "apps": [
+    {
+     "id": "TheDocumentFoundation.LibreOffice",
+     "nombre": "LibreOffice",
+     "desc": "Documentos, hojas de cálculo y presentaciones gratis.",
+     "detecta": "^LibreOffice"
+    },
+    {
+     "id": "SumatraPDF.SumatraPDF",
+     "nombre": "SumatraPDF",
+     "desc": "Lector de PDF muy ligero.",
+     "detecta": "^SumatraPDF"
+    },
+    {
+     "id": "PDFsam.PDFsam",
+     "nombre": "PDFsam Basic",
+     "desc": "Une, divide y reordena PDF.",
+     "detecta": "^PDFsam"
+    },
+    {
+     "id": "Notion.Notion",
+     "nombre": "Notion",
+     "desc": "Notas, tareas y documentos.",
+     "detecta": "^Notion"
+    },
+    {
+     "id": "Obsidian.Obsidian",
+     "nombre": "Obsidian",
+     "desc": "Notas en Markdown en tu PC.",
+     "detecta": "^Obsidian"
+    }
+   ]
+  },
+  {
+   "nombre": "Utilidades",
+   "icono": "llave",
+   "apps": [
+    {
+     "id": "7zip.7zip",
+     "nombre": "7-Zip",
+     "desc": "Abre y crea ZIP, RAR, 7z y más.",
+     "detecta": "^7-Zip"
+    },
+    {
+     "id": "voidtools.Everything",
+     "nombre": "Everything",
+     "desc": "Encuentra cualquier archivo al instante.",
+     "detecta": "^Everything"
+    },
+    {
+     "id": "AntibodySoftware.WizTree",
+     "nombre": "WizTree",
+     "desc": "Mapa visual de qué ocupa tu disco.",
+     "detecta": "^WizTree"
+    },
+    {
+     "id": "Microsoft.PowerToys",
+     "nombre": "PowerToys",
+     "desc": "Herramientas extra de Microsoft para Windows.",
+     "detecta": "^PowerToys"
+    },
+    {
+     "id": "Notepad++.Notepad++",
+     "nombre": "Notepad++",
+     "desc": "Editor de texto con colores para código.",
+     "detecta": "^Notepad\\+\\+"
+    },
+    {
+     "id": "Rufus.Rufus",
+     "nombre": "Rufus",
+     "desc": "Crea memorias USB de arranque para instalar Windows.",
+     "detecta": "^Rufus"
+    },
+    {
+     "id": "LocalSend.LocalSend",
+     "nombre": "LocalSend",
+     "desc": "Pasa archivos entre PC y celular por Wi-Fi.",
+     "detecta": "^LocalSend"
+    }
+   ]
+  },
+  {
+   "nombre": "Diagnóstico de hardware",
+   "icono": "cpu",
+   "apps": [
+    {
+     "id": "CPUID.CPU-Z",
+     "nombre": "CPU-Z",
+     "desc": "Detalles del procesador, la placa y la RAM.",
+     "detecta": "^CPUID CPU-Z|^CPU-Z"
+    },
+    {
+     "id": "TechPowerUp.GPU-Z",
+     "nombre": "GPU-Z",
+     "desc": "Detalles y sensores de la tarjeta gráfica.",
+     "detecta": "^TechPowerUp GPU-Z|^GPU-Z"
+    },
+    {
+     "id": "REALiX.HWiNFO",
+     "nombre": "HWiNFO",
+     "desc": "Todos los sensores del PC en detalle.",
+     "detecta": "^HWiNFO"
+    },
+    {
+     "id": "CrystalDewWorld.CrystalDiskInfo",
+     "nombre": "CrystalDiskInfo",
+     "desc": "Salud de tus discos (SMART).",
+     "detecta": "^CrystalDiskInfo"
+    },
+    {
+     "id": "CrystalDewWorld.CrystalDiskMark",
+     "nombre": "CrystalDiskMark",
+     "desc": "Mide la velocidad de tus discos.",
+     "detecta": "^CrystalDiskMark"
+    },
+    {
+     "id": "Guru3D.Afterburner",
+     "nombre": "MSI Afterburner",
+     "desc": "Overclock y monitor de la gráfica.",
+     "detecta": "^MSI Afterburner"
+    }
+   ]
+  },
+  {
+   "nombre": "Seguridad",
+   "icono": "escudo",
+   "apps": [
+    {
+     "id": "Malwarebytes.Malwarebytes",
+     "nombre": "Malwarebytes",
+     "desc": "Segunda opinión contra malware (versión gratis).",
+     "detecta": "^Malwarebytes"
+    },
+    {
+     "id": "Bitwarden.Bitwarden",
+     "nombre": "Bitwarden",
+     "desc": "Gestor de contraseñas gratuito.",
+     "detecta": "^Bitwarden"
+    },
+    {
+     "id": "KeePassXCTeam.KeePassXC",
+     "nombre": "KeePassXC",
+     "desc": "Gestor de contraseñas sin nube.",
+     "detecta": "^KeePassXC"
+    }
+   ]
+  },
+  {
+   "nombre": "Acceso remoto",
+   "icono": "red",
+   "apps": [
+    {
+     "id": "AnyDesk.AnyDesk",
+     "nombre": "AnyDesk",
+     "desc": "Soporte remoto: deja que un técnico te ayude.",
+     "detecta": "^AnyDesk"
+    },
+    {
+     "id": "TeamViewer.TeamViewer",
+     "nombre": "TeamViewer",
+     "desc": "Control remoto y soporte.",
+     "detecta": "^TeamViewer"
+    }
+   ]
+  },
+  {
+   "nombre": "IA en tu PC",
+   "icono": "estrella",
+   "apps": [
+    {
+     "id": "Ollama.Ollama",
+     "nombre": "Ollama",
+     "desc": "Modelos de IA que funcionan sin internet.",
+     "detecta": "^Ollama"
+    },
+    {
+     "id": "ElementLabs.LMStudio",
+     "nombre": "LM Studio",
+     "desc": "Prueba modelos de IA locales con una interfaz sencilla.",
+     "detecta": "^LM Studio"
+    }
+   ]
+  },
+  {
+   "nombre": "Programación",
+   "icono": "codigo",
+   "apps": [
+    {
+     "id": "Microsoft.VisualStudioCode",
+     "nombre": "Visual Studio Code",
+     "desc": "Editor de código.",
+     "detecta": "^Microsoft Visual Studio Code"
+    },
+    {
+     "id": "Git.Git",
+     "nombre": "Git",
+     "desc": "Control de versiones.",
+     "detecta": "^Git$|^Git version"
+    },
+    {
+     "id": "Python.Python.3.13",
+     "nombre": "Python 3.13",
+     "desc": "Lenguaje de programación.",
+     "detecta": "^Python 3\\.13"
+    },
+    {
+     "id": "OpenJS.NodeJS.LTS",
+     "nombre": "Node.js LTS",
+     "desc": "JavaScript fuera del navegador.",
+     "detecta": "^Node\\.js"
+    }
+   ]
+  }
+ ]
+}

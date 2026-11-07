@@ -10,7 +10,7 @@ for (const f of ['main.js', 'preload.js', 'overlay-preload.js', 'renderer/app.js
   ok('Sintaxis ' + f, () => execFileSync(process.execPath, ['--check', path.join(raiz, f)]));
 }
 ok('Archivos necesarios', () => {
-  for (const f of ['renderer/index.html', 'renderer/overlay.html', 'renderer/app.css', 'engine/monitor.ps1', 'engine/limpieza.ps1', 'engine/prueba-disco.ps1', 'engine/permitir-fps.ps1', 'sensores/Program.cs', 'sensores/Fps.cs', 'tests/datos/presentmon.csv', 'renderer/icon.png', 'build/icon.ico', 'engine/DoctorPC.ps1', 'engine/datos/precios.json', 'engine/datos/catalogo_juegos.json', 'engine/datos/indices_hardware.json']) {
+  for (const f of ['renderer/index.html', 'renderer/overlay.html', 'renderer/app.css', 'engine/monitor.ps1', 'engine/limpieza.ps1', 'engine/prueba-disco.ps1', 'engine/permitir-fps.ps1', 'engine/programas.ps1', 'engine/archivos.ps1', 'engine/datos/catalogo_programas.json', 'sensores/Program.cs', 'sensores/Fps.cs', 'tests/datos/presentmon.csv', 'renderer/icon.png', 'build/icon.ico', 'engine/DoctorPC.ps1', 'engine/datos/precios.json', 'engine/datos/catalogo_juegos.json', 'engine/datos/indices_hardware.json']) {
     if (!fs.existsSync(path.join(raiz, f))) throw new Error('falta ' + f);
   }
 });
@@ -95,6 +95,31 @@ ok('Capacidades de un portátil con gráficos integrados', () => {
   const caps = C.capacidades({ Cpu: 'AMD Ryzen 5 5500U with Radeon Graphics', CpuIndice: 108, Gpu: 'AMD Radeon(TM) Graphics', GpuIndice: 25, GpuIntegrada: true, SoloIntegrada: true, RamGB: 8, Hilos: 12, EsPortatil: true });
   if (caps.find(x => x.id === 'vr').nivel !== 'no') throw new Error('sin VR con gráficos integrados');
   if (!caps.find(x => x.id === 'nube')) throw new Error('debería sugerir juego en la nube');
+});
+
+ok('Catálogo de programas (ids de winget, detección e iconos)', () => {
+  const cat = JSON.parse(fs.readFileSync(path.join(raiz, 'engine/datos/catalogo_programas.json'), 'utf8'));
+  const html = fs.readFileSync(path.join(raiz, 'renderer/index.html'), 'utf8');
+  const ids = new Set();
+  for (const c of cat.categorias) {
+    if (!html.includes(`id="i-${c.icono}"`)) throw new Error('falta el icono ' + c.icono);
+    for (const a of c.apps) {
+      if (!/^[A-Za-z0-9][A-Za-z0-9.+\-_]+$/.test(a.id)) throw new Error('id raro: ' + a.id);
+      if (ids.has(a.id)) throw new Error('id repetido: ' + a.id); ids.add(a.id);
+      if (!a.nombre || !a.desc) throw new Error('falta nombre o descripción: ' + a.id);
+      new RegExp(a.detecta, 'i');
+    }
+  }
+  if (ids.size < 40) throw new Error('catálogo muy corto');
+});
+ok('Todos los iconos usados en la interfaz existen', () => {
+  const html = fs.readFileSync(path.join(raiz, 'renderer/index.html'), 'utf8');
+  const js = fs.readFileSync(path.join(raiz, 'renderer/app.js'), 'utf8');
+  const usados = new Set([...js.matchAll(/ico\('([a-z-]+)'\)/g)].map(m => m[1]));
+  const mapas = [...js.matchAll(/ICONO_LIMPIEZA = \{([^}]+)\}/g), ...js.matchAll(/CAT_PROG = \{([\s\S]+?)\n\};/g)];
+  for (const m of mapas) for (const x of m[1].matchAll(/'([a-z-]+)'(?=\s*[,}\]])/g)) usados.add(x[1]);
+  const faltan = [...usados].filter(n => !html.includes(`id="i-${n}"`));
+  if (faltan.length) throw new Error('faltan: ' + faltan.join(', '));
 });
 
 if (fallos) { console.log(fallos + ' comprobación(es) fallaron.'); process.exit(1); }

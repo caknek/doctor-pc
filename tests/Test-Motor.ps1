@@ -121,6 +121,62 @@ if ($env:OS -eq 'Windows_NT') {
         Write-Host ("        Liberado: {0:N1} MB en {1} archivos" -f ($l.Liberado / 1MB), $l.Borrados)
         Remove-Item $nuevo -Force
     }
+    Test-Paso 'Limpieza: la caché de apps nunca toca sesiones ni conversaciones' {
+        $app = Join-Path $env:APPDATA ('DoctorPcPruebaApp' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+        New-Item -ItemType Directory -Force -Path (Join-Path $app 'Local Storage\leveldb'), (Join-Path $app 'IndexedDB'), (Join-Path $app 'Cache\Cache_Data'), (Join-Path $app 'Code Cache') | Out-Null
+        Set-Content (Join-Path $app 'Local Storage\leveldb\000001.ldb') 'sesion'
+        Set-Content (Join-Path $app 'IndexedDB\conversaciones.db') 'chat'
+        Set-Content (Join-Path $app 'Preferences') '{}'
+        Set-Content (Join-Path $app 'Cache\Cache_Data\f_000001') ('c' * 20000)
+        Set-Content (Join-Path $app 'Code Cache\js') ('j' * 5000)
+        $out = Join-Path $salida 'limpieza-apps.json'
+        & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'limpieza.ps1') -Modo analizar -Salida $out | Out-Null
+        $a = Get-Content $out -Raw -Encoding UTF8 | ConvertFrom-Json
+        $c = @($a.Categorias | Where-Object Id -eq 'apps_cache')[0]
+        if (-not $c) { throw 'falta la categoría apps_cache' }
+        if (-not (@($c.Detalle | Where-Object { $_.Etiqueta -like 'DoctorPcPruebaApp*' }).Count)) { throw 'no detectó la app de prueba' }
+        foreach ($k in 'Que', 'Efecto', 'NoToca') { if (-not $c.$k) { throw "falta $k" } }
+        & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'limpieza.ps1') -Modo limpiar -Elementos apps_cache -Salida $out | Out-Null
+        if (Test-Path (Join-Path $app 'Cache\Cache_Data\f_000001')) { throw 'no borró la caché' }
+        if (Test-Path (Join-Path $app 'Code Cache\js')) { throw 'no borró Code Cache' }
+        foreach ($f in 'Local Storage\leveldb\000001.ldb', 'IndexedDB\conversaciones.db', 'Preferences') { if (-not (Test-Path (Join-Path $app $f))) { throw "borró $f" } }
+        Remove-Item $app -Recurse -Force
+    }
+    Test-Paso 'Programas: lista del registro, unidades y tamaños' {
+        $out = Join-Path $salida 'programas.json'
+        & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'programas.ps1') -Modo listar -Salida $out | Out-Null
+        $p = Get-Content $out -Raw -Encoding UTF8 | ConvertFrom-Json
+        $lista = @($p.Programas)
+        if ($lista.Count -lt 5) { throw "solo $($lista.Count) programas" }
+        if (-not @($p.Unidades).Count) { throw 'sin unidades' }
+        if (@($lista | Where-Object { -not $_.Nombre -or -not $_.Id }).Count) { throw 'programas sin nombre o id' }
+        $conTam = @($lista | Where-Object { $_.TamanoReal -gt 0 })
+        if (-not $conTam.Count) { throw 'no midió ningún tamaño' }
+        $top = $conTam | Sort-Object TamanoReal -Descending | Select-Object -First 3
+        Write-Host ("        {0} programas, {1} con carpeta medida. Mayores: {2}" -f $lista.Count, $conTam.Count, (($top | ForEach-Object { "{0} ({1:N1} GB, {2})" -f $_.Nombre, ($_.TamanoReal / 1GB), $_.Unidad }) -join '; '))
+        $cats = $lista | Group-Object Categoria | ForEach-Object { "$($_.Name)=$($_.Count)" }
+        Write-Host ("        Tipos: {0}" -f ($cats -join ', '))
+    }
+    Test-Paso 'Programas: no acepta claves fuera de Uninstall ni abre nada raro' {
+        $out = Join-Path $salida 'existe.json'
+        & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'programas.ps1') -Modo existe -Clave 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Salida $out | Out-Null
+        if ((Get-Content $out -Raw | ConvertFrom-Json).Existe) { throw 'aceptó una clave que no es de Uninstall' }
+        & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'programas.ps1') -Modo desinstalar -Clave 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\..\..\Run' -Salida $out | Out-Null
+        if ((Get-Content $out -Raw | ConvertFrom-Json).Ok) { throw 'aceptó una clave con ..' }
+    }
+    Test-Paso 'Espacio: carpetas y archivos grandes de una carpeta' {
+        $dir = Join-Path $env:TEMP ('doctorpc-espacio-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+        New-Item -ItemType Directory -Force -Path (Join-Path $dir 'Videos'), (Join-Path $dir 'Otros') | Out-Null
+        $f = [IO.File]::Create((Join-Path $dir 'Videos\grande.mp4')); $f.SetLength(150MB); $f.Close()
+        Set-Content (Join-Path $dir 'Otros\chico.txt') 'hola'
+        $out = Join-Path $salida 'espacio.json'
+        & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'programas.ps1') -Modo espacio -Ruta $dir -Salida $out | Out-Null
+        $e = Get-Content $out -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($e.Archivos -ne 2) { throw "contó $($e.Archivos) archivos" }
+        if (@($e.Grandes).Count -ne 1 -or $e.Grandes[0].Nombre -ne 'grande.mp4') { throw 'no encontró el archivo grande' }
+        if (-not (@($e.Carpetas | Where-Object Nombre -eq 'Videos')[0].Tamano -ge 150MB)) { throw 'tamaño de carpeta incorrecto' }
+        Remove-Item $dir -Recurse -Force
+    }
     Test-Paso 'Prueba de velocidad del disco (lectura y escritura directas)' {
         $out = Join-Path $salida 'disco.json'
         & $host_exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dirMotor 'prueba-disco.ps1') -Unidad C -Salida $out -TamanoMB 256 | Out-Null
