@@ -71,6 +71,11 @@ jobs:
             git tag $t
             git push origin $t
           }
+          # Crear el borrador antes de compilar: así electron-builder lo reutiliza y no crea dos a la vez
+          $hay = gh api "repos/${{ github.repository }}/releases?per_page=50" | ConvertFrom-Json | Where-Object { $_.tag_name -eq $t }
+          if (-not $hay) { gh release create $t --draft --title "Doctor PC ${{ steps.version.outputs.version }}" --notes-file build/release-notes.md --repo '${{ github.repository }}' }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compilar el instalador y publicarlo en Releases
         if: steps.version.outputs.existe == 'false'
@@ -82,16 +87,36 @@ jobs:
         if: steps.version.outputs.existe == 'false'
         shell: pwsh
         run: |
-          $t = 'v${{ steps.version.outputs.version }}'
+          $v = '${{ steps.version.outputs.version }}'
+          $t = "v$v"
+          $repo = '${{ github.repository }}'
           $dir = 'dist/DoctorPC-Consola'
           New-Item -ItemType Directory -Path $dir -Force | Out-Null
           Copy-Item engine/* $dir -Recurse
           Compress-Archive -Path "$dir/*" -DestinationPath dist/DoctorPC-Consola.zip -Force
-          gh release upload $t dist/DoctorPC-Consola.zip --clobber --repo '${{ github.repository }}'
-          # Comprobar que están los archivos que necesita el actualizador antes de publicar
-          $assets = gh release view $t --repo '${{ github.repository }}' --json assets -q '.assets[].name'
-          foreach ($a in 'DoctorPC-Instalador.exe', 'latest.yml') { if ($assets -notcontains $a) { throw "Falta $a en el release" } }
-          gh release edit $t --repo '${{ github.repository }}' --draft=false --latest --title "Doctor PC ${{ steps.version.outputs.version }}" --notes-file build/release-notes.md
+          $todas = @(gh api "repos/$repo/releases?per_page=100" | ConvertFrom-Json)
+          # electron-builder a veces deja dos borradores con la misma etiqueta: se usa el que tiene el instalador y latest.yml
+          $borradores = @($todas | Where-Object { $_.tag_name -eq $t -and $_.draft })
+          $buena = $borradores | Where-Object { @($_.assets.name) -contains 'DoctorPC-Instalador.exe' -and @($_.assets.name) -contains 'latest.yml' } | Select-Object -First 1
+          if (-not $buena) { throw "Ningún borrador de $t tiene DoctorPC-Instalador.exe y latest.yml" }
+          foreach ($r in $borradores) { if ($r.id -ne $buena.id) { gh api -X DELETE "repos/$repo/releases/$($r.id)"; Write-Host "Borrador duplicado eliminado ($($r.id))" } }
+          foreach ($f in @('dist/DoctorPC-Consola.zip', 'dist/DoctorPC-Instalador.exe.blockmap')) {
+            if (-not (Test-Path $f)) { continue }
+            $n = Split-Path $f -Leaf
+            $previo = $buena.assets | Where-Object { $_.name -eq $n }
+            if ($previo) { gh api -X DELETE "repos/$repo/releases/assets/$($previo.id)" }
+            gh api -X POST -H 'Content-Type: application/octet-stream' "https://uploads.github.com/repos/$repo/releases/$($buena.id)/assets?name=$n" --input $f | Out-Null
+            Write-Host "Subido $n"
+          }
+          gh api -X PATCH "repos/$repo/releases/$($buena.id)" -F draft=false -f make_latest=true -f name="Doctor PC $v" -F body=@build/release-notes.md | Out-Null
+          # Limpiar borradores viejos de versiones que ya están publicadas
+          foreach ($r in $todas) {
+            if ($r.draft -and $r.id -ne $buena.id -and $r.tag_name -ne $t -and ($todas | Where-Object { $_.tag_name -eq $r.tag_name -and -not $_.draft })) {
+              gh api -X DELETE "repos/$repo/releases/$($r.id)"; Write-Host "Borrador sobrante de $($r.tag_name) eliminado"
+            }
+          }
+          $assets = gh release view $t --repo $repo --json assets -q '.assets[].name'
+          foreach ($a in 'DoctorPC-Instalador.exe', 'latest.yml') { if ($assets -notcontains $a) { throw "Falta $a en el release publicado" } }
           Write-Host "Publicada $t"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
